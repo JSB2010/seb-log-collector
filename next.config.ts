@@ -22,6 +22,17 @@ const config: NextConfig = {
           },
         ],
       },
+      // Next's configured headers override route Response headers. This last,
+      // specific rule keeps raw log content stricter than the dashboard shell.
+      {
+        source: "/api/admin/v1/logs/:id/open",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'none'; sandbox; frame-ancestors 'none'",
+          },
+        ],
+      },
     ];
   },
 };
