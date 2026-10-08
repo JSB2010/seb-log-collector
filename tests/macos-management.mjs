@@ -30,6 +30,8 @@ try {
     await mkdir(work, { mode: 0o700 });
     const id = "11111111-1111-4111-a111-111111111111";
     const target = "0.3.0";
+    await writeFile(join(root, "state/management-active"), id);
+    await writeFile(join(root, "state/outcome"), "management_running");
     await writeFile(
       join(root, "state/installed-version"),
       test === "same" ? "0.3.0" : test === "older" ? "1.0.0" : "0.2.1",
@@ -137,6 +139,13 @@ try {
         if (test === "bad-hash")
           assert.equal(result.result, "checksum_mismatch");
       }
+    }
+    if (test !== "uninstall") {
+      assert.equal(
+        await readFile(join(root, "state/outcome"), "utf8"),
+        "idle\n",
+      );
+      await assert.rejects(readFile(join(root, "state/management-active")));
     }
     await assert.rejects(
       readFile(join(work, "device.json")),

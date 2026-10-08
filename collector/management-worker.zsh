@@ -15,7 +15,14 @@ id=''; label=''; child=''; watchdog=''; result=install_failed
 finish() {
   [[ -z $child ]] || /bin/kill -TERM "$child" 2>/dev/null || true
   [[ -z $watchdog ]] || /bin/kill -TERM "$watchdog" 2>/dev/null || true
-  [[ ! -f "$ROOT/state/management-active" ]] || { [[ $(<"$ROOT/state/management-active") != $id ]] || /bin/rm -f "$ROOT/state/management-active"; }
+  if [[ -f "$ROOT/state/management-active" && $(<"$ROOT/state/management-active") == $id ]]; then
+    /bin/rm -f "$ROOT/state/management-active"
+    # This worker has exited; do not leave Status.command showing it as running.
+    if [[ -f "$ROOT/state/outcome" && $(<"$ROOT/state/outcome") == management_running ]]; then
+      print -r -- idle > "$ROOT/state/management-outcome.$id"
+      /bin/mv -f "$ROOT/state/management-outcome.$id" "$ROOT/state/outcome"
+    fi
+  fi
   /bin/rm -rf "$work"
   [[ -z $label ]] || /bin/launchctl bootout "system/$label" 2>/dev/null || true
 }

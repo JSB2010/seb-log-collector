@@ -1,6 +1,12 @@
 import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 const version = JSON.parse(await readFile("package.json", "utf8")).version;
+if (
+  !(await readFile("collector/soe-diagnostics", "utf8")).includes(
+    `typeset -r VERSION=${version}\n`,
+  )
+)
+  throw new Error("Collector and package versions must match before packaging");
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const files = [
   "soe-diagnostics",

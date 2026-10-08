@@ -1,14 +1,14 @@
 {
-  "version": "0.3.0",
+  "version": "0.3.1",
   "schemaVersion": 1,
   "installer": {
     "path": "/collector/install.zsh",
-    "sha256": "c9717ae3bb9437c5dbe113b28715129c30b6ca294a1da1b9c2fa507b5dd8a3eb"
+    "sha256": "a1cc5d02ca66accdf4f209bc92aaeeccfee1e764b86b05b22f8a095189f3d999"
   },
   "files": [
     {
       "name": "soe-diagnostics",
-      "sha256": "28fdfa34f7f8d7c3b68ce3b67b81f86e651e7c640c4ccd91ac4d93479f146931"
+      "sha256": "ae874f6cf4b3a86f107447cb49cfbf85000dfee402cc3789375273bdb524ce0e"
     },
     {
       "name": "read-source",
@@ -48,7 +48,7 @@
     },
     {
       "name": "support/management-worker.zsh",
-      "sha256": "e14b9c1dad2f05fc82d9872aaee6b18d989996159f0e657bfe7e66b90380808a"
+      "sha256": "915261860c6f87b171cd7ee860d99d97dfaa94605511b126b5c904cc85ff9a01"
     },
     {
       "name": "support/uninstall.zsh",
