@@ -38,7 +38,7 @@ rotate_logs() {
     : > "$file"
   fi
 }
-die() { set_outcome "$1" 2>/dev/null || true; print -u2 -- "SOE Diagnostics: $1"; exit 1; }
+die() { set_outcome "$1" 2>/dev/null || true; print -u2 -- "Safe Online Exam Logs: $1"; exit 1; }
 acquire_lock() {
   local lock="$STATE/lock" pid boot current_boot
   current_boot=$(/usr/sbin/sysctl -n kern.boottime)

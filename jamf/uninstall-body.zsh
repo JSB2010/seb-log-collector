@@ -12,4 +12,4 @@ for p in "$ROOT" "$PLIST" "$LOGS"; do safe_path "$p"; done
 /bin/rm -rf "$ROOT" "$LOGS"
 /bin/rm -f "$PLIST"
 for p in "$ROOT" "$PLIST" "$LOGS"; do [[ ! -e $p && ! -L $p ]] || { print -u2 "Partial removal: $p remains"; exit 1; }; done
-print 'SOE Diagnostics removed locally. Confirm server-side revocation in the dashboard.'
+print 'Safe Online Exam Logs removed locally. Confirm server-side revocation in the dashboard.'

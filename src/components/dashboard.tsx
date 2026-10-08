@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./icon";
+import { BrandMark } from "./brand";
 import { csvCell, parseRoster } from "./csv";
 import { enrollmentInstaller } from "./enrollment";
 type Row = Record<string, any>;
@@ -237,18 +238,17 @@ export function Dashboard() {
   }
   if (me === undefined)
     return (
-      <main className="signin">
-        <h1>SOE Diagnostics</h1>
-        <p>Checking your session…</p>
+      <main className="signin" id="main-content" tabIndex={-1}>
+        <BrandMark className="signin-logo" />
+        <h1>Safe Online Exam Logs</h1>
+        <p role="status">Checking your session…</p>
       </main>
     );
   if (!me)
     return (
-      <main className="signin">
-        <div className="signin-mark">
-          <Icon name="audit" />
-        </div>
-        <h1>SOE Diagnostics</h1>
+      <main className="signin" id="main-content" tabIndex={-1}>
+        <BrandMark className="signin-logo" />
+        <h1>Safe Online Exam Logs</h1>
         <p>Safe Exam Browser logs for school IT.</p>
         <a className="button primary" href="/api/auth/login">
           Sign in with Google
@@ -259,14 +259,19 @@ export function Dashboard() {
   return (
     <div className={`shell ${selected ? "has-detail" : ""}`}>
       <aside className="sidebar">
-        <a className="brand" href="/">
-          SOE Diagnostics
+        <a className="brand" href="/" aria-label="Safe Online Exam Logs">
+          <BrandMark />
+          <span className="brand-name">
+            <span>Safe Online Exam</span>
+            <span className="brand-product">Logs</span>
+          </span>
         </a>
         <nav aria-label="Main navigation">
           {views.map(([v, label]) => (
             <button
               key={v}
               className={view === v ? "active" : ""}
+              aria-current={view === v ? "page" : undefined}
               onClick={() => changeView(v)}
             >
               <Icon name={v} />
@@ -287,7 +292,7 @@ export function Dashboard() {
           </button>
         </footer>
       </aside>
-      <main className="workspace">
+      <main className="workspace" id="main-content" tabIndex={-1}>
         <header>
           <div>
             <h1>{views.find(([v]) => v === view)?.[1]}</h1>
@@ -320,7 +325,10 @@ export function Dashboard() {
           ) : view === "logs" ? (
             <button
               onClick={() =>
-                save("diagnostics-metadata.json", JSON.stringify(rows, null, 2))
+                save(
+                  "safe-online-exam-logs-metadata.json",
+                  JSON.stringify(rows, null, 2),
+                )
               }
             >
               Export JSON
@@ -418,7 +426,7 @@ export function Dashboard() {
         {view === "logs" && (
           <div className="session-filters">
             <label>
-              SOE instance
+              Safe Online Exam instance
               <input
                 value={instance}
                 onChange={(e) => setInstance(e.target.value)}
@@ -426,7 +434,7 @@ export function Dashboard() {
               />
             </label>
             <label>
-              SOE session
+              Safe Online Exam session
               <input
                 value={session}
                 onChange={(e) => setSession(e.target.value)}
@@ -697,7 +705,7 @@ export function Dashboard() {
                   "gzipBytes",
                 ];
                 save(
-                  "diagnostics-metadata.csv",
+                  "safe-online-exam-logs-metadata.csv",
                   [
                     cols.join(","),
                     ...rows.map((r) =>
@@ -905,7 +913,7 @@ export function Dashboard() {
                   <pre>{preview.text}</pre>
                 </>
               )}
-              <h3>SOE session association</h3>
+              <h3>Safe Online Exam session association</h3>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -918,7 +926,7 @@ export function Dashboard() {
                 }}
               >
                 <label>
-                  SOE instance
+                  Safe Online Exam instance
                   <input name="instance" required maxLength={80} />
                 </label>
                 <label>
@@ -998,7 +1006,7 @@ export function Dashboard() {
                         code.origin,
                       );
                       save(
-                        "restricted-install-and-enroll.zsh",
+                        "safe-online-exam-logs-install-and-enroll.zsh",
                         script,
                         "text/plain",
                       );

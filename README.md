@@ -1,4 +1,4 @@
-# SOE Diagnostics
+# Safe Online Exam Logs
 
 Collect Safe Exam Browser application logs from managed Macs for school IT. A small native-tool zsh collector is delivered through Jamf School; a Next.js dashboard catalogs verified gzip snapshots in private Google Cloud Storage and Firestore.
 
@@ -6,7 +6,7 @@ This project requires no Apple Developer account, signed package, notarization, 
 
 ## Components
 
-- `src/server`: enrollment, per-device credentials, durable reservations/quotas, verification, admin authorization, retention, and optional SOE lookup.
+- `src/server`: enrollment, per-device credentials, durable reservations/quotas, verification, admin authorization, retention, and optional Safe Online Exam lookup.
 - `src/components`: fleet, log catalog, device details, roster enrollment, requests, audit history, and live administrator management.
 - `collector`: short-lived zsh coordinator, SQLite ledger, and source reader running as the source user.
 - `jamf/releases`: embedded install/update scripts, offline uninstaller, manifest, and SHA-256 checksums.
@@ -49,7 +49,7 @@ Device credentials authorize only that device's control and upload API. The crea
 
 Accepted logs expire 90 days after GCS first created the verified generation. The application denies access immediately at expiry; bounded hourly maintenance and bucket lifecycle rules delete bytes asynchronously. Soft delete and versioning are disabled. Log metadata, reports, associations, and audits expire after at most 90 days. Active fleet enrollment and admin configuration remain while managed; retired device metadata expires after 90 days, with a minimal revoked installation identifier/hash retained to reject old credentials. Duplicate submissions and session associations never restart retention. Original SEB logs and separately downloaded admin copies are outside cloud cleanup.
 
-SOE integration is optional and server-to-server. It provides manual opaque session associations and a separate read-only lookup credential; SOE must authenticate and authorize its own admins. There is no assumed existing SOE API.
+Safe Online Exam integration is optional and server-to-server. It provides manual opaque session associations and a separate read-only lookup credential; Safe Online Exam must authenticate and authorize its own admins. There is no assumed existing Safe Online Exam API.
 
 ## License
 

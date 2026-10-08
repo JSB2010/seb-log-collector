@@ -3,7 +3,7 @@ ledger_sql() {
   local code=0
   # SQLite parser errors may echo SQL containing source-user/device metadata.
   /usr/bin/sqlite3 -batch -bail "$LEDGER" "$1" 2>/dev/null || code=$?
-  if (( code != 0 )); then set_error ledger_error; print -u2 "SOE Diagnostics: ledger operation failed (SQLite exit $code)"; fi
+  if (( code != 0 )); then set_error ledger_error; print -u2 "Safe Online Exam Logs: ledger operation failed (SQLite exit $code)"; fi
   return $code
 }
 ledger_init() {

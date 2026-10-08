@@ -1,11 +1,11 @@
 #!/bin/zsh -f
-# Copyright (c) SOE Diagnostics contributors. MIT licensed.
+# Copyright (c) Safe Online Exam Logs contributors. MIT licensed.
 emulate -LR zsh
 setopt ERR_EXIT NO_UNSET PIPE_FAIL EXTENDED_GLOB
 umask 077
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 unset CDPATH ENV BASH_ENV
-typeset -r VERSION=0.1.3
+typeset -r VERSION=0.1.4
 typeset ROOT='/Library/Application Support/SOEDiagnostics'
 if [[ ${SOE_TEST_MODE:-0} == 1 && $EUID != 0 && ${SOE_TEST_ROOT:-} == */.local/collector-test ]]; then ROOT=$SOE_TEST_ROOT; else [[ $EUID == 0 ]] || { print -u2 'Root required'; exit 1; }; fi
 typeset -r BIN="$ROOT/bin" STATE="$ROOT/state" STAGE="$ROOT/staging" CREDS="$ROOT/credentials/device.json" CONFIG="$ROOT/config.json"

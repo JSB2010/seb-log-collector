@@ -24,4 +24,4 @@ Scheduler sends an OIDC token with the configured service account and exact audi
 
 Configure `notification_email` or existing verified channel IDs and a project-specific billing budget. Terraform connects the recipient to server-error, overdue-cleanup, and budget notifications; complete any email verification Google requires. Threshold alerts occur at 50/80/100 percent when a billing account is configured. Billing account privileges may be separate from project ownership. Alerts do not cap costs. Keep Cloud Run maximum instances and issuance quotas bounded; measure storage and read/write growth during the pilot.
 
-For SOE lookup, populate `diagnostics-integration`, enable `integration_secret_enabled`, and keep the credential in SOE's server secret store. The contract is in [API](api.md).
+For Safe Online Exam lookup, populate `diagnostics-integration`, enable `integration_secret_enabled`, and keep the credential in Safe Online Exam's server secret store. The contract is in [API](api.md).

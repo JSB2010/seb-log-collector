@@ -36,7 +36,7 @@ Admin APIs require a current Google-backed session, current Firestore permission
 | Live admins             | GET `/admins`; POST `/admins` with `email`, `active`                         |
 | Session association     | POST `/session-links` with `logId`, `instance`, `session`, optional `remove` |
 
-Server-to-server SOE lookup: GET `/api/integration/v1/logs?instance=<opaque>&session=<opaque>` with a separate integration bearer. Returns bounded unexpired metadata and admin deep links only. SOE must enforce its own admin role; never place this credential in a browser. Manual links are labeled manual and do not infer identity from hostnames.
+Server-to-server Safe Online Exam lookup: GET `/api/integration/v1/logs?instance=<opaque>&session=<opaque>` with a separate integration bearer. Returns bounded unexpired metadata and admin deep links only. Safe Online Exam must enforce its own admin role; never place this credential in a browser. Manual links are labeled manual and do not infer identity from hostnames.
 
 Maintenance POST `/api/internal/v1/maintenance` requires Google's OIDC signature, configured Scheduler identity and exact audience. Headers or knowledge of this path grant no access.
 
