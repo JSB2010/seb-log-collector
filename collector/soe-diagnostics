@@ -5,7 +5,7 @@ setopt ERR_EXIT NO_UNSET PIPE_FAIL EXTENDED_GLOB
 umask 077
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 unset CDPATH ENV BASH_ENV
-typeset -r VERSION=0.2.0
+typeset -r VERSION=0.2.1
 typeset ROOT='/Library/Application Support/SOEDiagnostics'
 if [[ ${SOE_TEST_MODE:-0} == 1 && $EUID != 0 && ${SOE_TEST_ROOT:-} == */.local/collector-test ]]; then ROOT=$SOE_TEST_ROOT; else [[ $EUID == 0 ]] || { print -u2 'Root required'; exit 1; }; fi
 typeset -r BIN="$ROOT/bin" STATE="$ROOT/state" STAGE="$ROOT/staging" CREDS="$ROOT/credentials/device.json" CONFIG="$ROOT/config.json"

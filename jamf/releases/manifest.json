@@ -1,14 +1,14 @@
 {
-  "version": "0.2.0",
+  "version": "0.2.1",
   "schemaVersion": 1,
   "installer": {
     "path": "/collector/install.zsh",
-    "sha256": "e82393a9da2708423723fdd72916675601dcc35d334f7702cea4f9c74c1febbe"
+    "sha256": "a564da278bf8be67559793085bc33e59fce9a77375394126bdb6463bf0dc4a5d"
   },
   "files": [
     {
       "name": "soe-diagnostics",
-      "sha256": "aeb55083df4c97feafc8408c8422efa47e72d5cb147440cf9782f2123e738b70"
+      "sha256": "d2145b4d91b4ed152137108fb956bbb7822845ea65498700e92e16c2e3eda4ce"
     },
     {
       "name": "read-source",
