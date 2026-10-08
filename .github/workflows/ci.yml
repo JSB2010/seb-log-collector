@@ -15,7 +15,7 @@ jobs:
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
       - name: ShellCheck portable deployment wrapper
-        run: docker run --rm -v "$PWD:/mnt" koalaman/shellcheck:v0.11.0 deployment/deploy.sh
+        run: docker run --rm -v "$PWD:/mnt" koalaman/shellcheck:v0.11.0 deployment/deploy.sh deployment/enable-apis.sh
   macos:
     runs-on: macos-latest
     steps:

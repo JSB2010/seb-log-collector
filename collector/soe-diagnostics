@@ -20,7 +20,7 @@ case $CMD in
   status) status_json ;;
   pause) /usr/bin/touch "$STATE/paused"; print 'Locally paused' ;;
   resume) /bin/rm -f "$STATE/paused"; print 'Local pause removed' ;;
-  prepare-uninstall) /usr/bin/touch "$STATE/stopping"; if [[ -f $CREDS ]]; then http POST /api/device/v1/deactivate '{}' 10 || true; fi; print 'Prepared for removal' ;;
+  prepare-uninstall) /usr/bin/touch "$STATE/stopping"; WORK=$(/usr/bin/mktemp -d "$STATE/work.XXXXXXXX"); trap cleanup EXIT; if [[ -f $CREDS ]]; then http POST /api/device/v1/deactivate '{}' 10 || true; fi; print 'Prepared for removal' ;;
   tick|collect|enroll)
     acquire_lock || exit 0
     trap cleanup EXIT

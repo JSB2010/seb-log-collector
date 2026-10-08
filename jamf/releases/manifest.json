@@ -4,7 +4,7 @@
   "files": [
     {
       "name": "soe-diagnostics",
-      "sha256": "1ca2f7a637c5c8b657b9bfd07b6cc838e0322def86faeace537f88d4ed52e86d"
+      "sha256": "19fece1aea39ba9f494678a508b7a804a8fde79c8c97676269bcd2956d7cac9c"
     },
     {
       "name": "read-source",
@@ -24,7 +24,7 @@
     },
     {
       "name": "lib/http.zsh",
-      "sha256": "91a6529294ac65d187af57ee78178dba241973c16e91a3d964d0ffae2fc144c4"
+      "sha256": "7afdf7c77a379b17f4739ffb338738bec2871a7e42097abcb2473b68f4c24b88"
     },
     {
       "name": "lib/ledger.zsh",

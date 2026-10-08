@@ -232,6 +232,25 @@ describe("Enrollment and permissions", () => {
       "https://diagnostics.example.org/api/auth/login",
     );
     expect(response.headers.get("set-cookie")).toBeNull();
+    await expect(
+      oauth(
+        new Request("http://0.0.0.0:8080/api/auth/login", {
+          headers: { host: "diagnostics.example.org" },
+        }),
+        "login",
+      ),
+    ).rejects.toMatchObject({ code: "oauth_not_configured" });
+    await expect(
+      oauth(
+        new Request("http://0.0.0.0:8080/api/auth/login", {
+          headers: {
+            host: "internal.run.app",
+            "x-forwarded-host": "diagnostics.example.org",
+          },
+        }),
+        "login",
+      ),
+    ).rejects.toMatchObject({ code: "oauth_not_configured" });
   });
 });
 describe("Reservations and retention", () => {

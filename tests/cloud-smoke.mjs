@@ -292,8 +292,25 @@ assert.ok(
 assert.ok(
   !(await post(policy.fields, Buffer.concat([gz, Buffer.from("!")]))).ok,
 );
-const stored = await post();
-assert.equal(stored.status, 201, `GCS upload ${stored.status}`);
+if (process.env.TEST_NATIVE_MAC === "1") {
+  assert.equal(process.platform, "darwin");
+  const root = `${process.cwd()}/.local/collector-test`,
+    state = `${root}/state`, stage = `${root}/staging/native space`;
+  await mkdir(`${root}/credentials`, {recursive:true});
+  await mkdir(state,{recursive:true}); await mkdir(stage,{recursive:true});
+  const credential = d.auth.authorization.slice(7).split(".");
+  await writeFile(`${root}/credentials/native-test-device.json`,JSON.stringify({installationId:d.installationId,secret:credential[1]}),{mode:0o600});
+  await writeFile(`${state}/native-bootstrap`,batch.code,{mode:0o600});
+  await writeFile(`${state}/native-enrollment.json`,JSON.stringify({schemaVersion:1,installationId:d.installationId,serial:serials[0],credentialHash:hash(Buffer.from(credential[1],"base64url")),metadata}),{mode:0o600});
+  await writeFile(`${state}/native-policy.json`,JSON.stringify(policy),{mode:0o600});
+  await writeFile(`${stage}/${hash(raw)}.gz`,gz,{mode:0o600});
+  const output = execFileSync("/bin/zsh",["-f","tests/macos-cloud.zsh"],{encoding:"utf8",env:{...process.env,NATIVE_FIXTURE_ROOT:root,TEST_ORIGIN:origin}});
+  console.log(output.trim());
+  ok("Actual native macOS enrollment, authenticated JSON, space-safe GCS upload and completion");
+} else {
+  const stored = await post();
+  assert.equal(stored.status, 201, `GCS upload ${stored.status}`);
+}
 const objectUrl = `https://storage.googleapis.com/${bucket}/${policy.fields.key}`;
 assert.ok(!(await fetch(objectUrl)).ok);
 assert.ok(!(await post()).ok);

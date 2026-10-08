@@ -20,6 +20,8 @@ Prove a private exact-length POST upload, effective create-only signer, overwrit
 
 Emulators and local verification cannot establish these provider behaviors. A forged operator test session can exercise admin routes but does not establish a completed Google browser sign-in. Test actual Google login with an allowed admin and a nonadmin school account after configuring the web client.
 
+The operator-only cloud harness accepts `TEST_ORIGIN`, `TEST_BUCKET`, `GCP_PROJECT`, and `GCP_ACCOUNT`. Run `node tests/cloud-smoke.mjs` using an explicitly authorized project/account. On macOS, adding `TEST_NATIVE_MAC=1` also exercises the collector's real curl configuration, native JSON parser, enrollment reconciliation, and multipart upload with a space in the file path. It uses an isolated ignored fixture directory and synthetic content; it does not install launchd or scan user logs. The operator must already have access to the session signing secret and Firestore; the harness binds its short-lived test session to that operator's verified Google identity. Remove synthetic records after inspecting Scheduler cleanup. Keep browser OAuth evidence separate.
+
 ## Managed Mac pilot gates
 
 1. Five to ten Macs: actual Jamf install, enrollment, standard/logged-out/multiple users, permissions, macOS 13+ and current fleet versions, Intel/Apple silicon as present.

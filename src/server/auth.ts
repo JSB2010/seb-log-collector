@@ -153,7 +153,14 @@ export async function oauth(req: Request, path: string) {
     url = new URL(req.url);
   // Keep the state cookie on the callback's configured host when an operator
   // follows an old Cloud Run URL after moving to a custom domain.
-  if (path === "login" && url.hostname !== new URL(c.PUBLIC_ORIGIN).hostname)
+  const forwardedHost = req.headers
+      .get("x-forwarded-host")
+      ?.split(",")[0]
+      .trim(),
+    requestHost = new URL(
+      `https://${forwardedHost || req.headers.get("host") || url.host}`,
+    ).hostname;
+  if (path === "login" && requestHost !== new URL(c.PUBLIC_ORIGIN).hostname)
     return new Response(null, {
       status: 302,
       headers: { location: `${c.PUBLIC_ORIGIN}/api/auth/login` },
