@@ -291,3 +291,36 @@ it("uses an in-app confirmation for group actions and closes it with Escape", as
     false,
   );
 });
+
+it("clears collection rows immediately when switching to lifecycle requests", async () => {
+  await navigate("Requests");
+  await finish(
+    "collectionRequests",
+    [{ id: "request-old", deviceId: "device-old", state: "completed" }],
+    "collection-page-2",
+  );
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(1);
+  const selector = container.querySelector(
+    ".filters select",
+  ) as HTMLSelectElement;
+  await act(async () => {
+    selector.value = "management";
+    selector.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+  expect(container.textContent).not.toContain("Uninstall");
+  expect(container.textContent).not.toContain("Load more");
+  expect(container.textContent).toContain("Loading…");
+  await finish("deviceCommands", [
+    {
+      id: "command-new",
+      deviceId: "device-new",
+      action: "update",
+      version: "0.3.1",
+      state: "completed",
+      result: "installed",
+    },
+  ]);
+  expect(container.textContent).toContain("Update to 0.3.1");
+  expect(container.textContent).not.toContain("device-old");
+});

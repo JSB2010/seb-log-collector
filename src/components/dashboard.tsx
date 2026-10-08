@@ -731,7 +731,13 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
               Requests
               <select
                 value={requestKind}
-                onChange={(e) => setRequestKind(e.target.value)}
+                onChange={(e) => {
+                  listRequest.current++;
+                  setRows([]);
+                  setCursor(null);
+                  setBusy(true);
+                  setRequestKind(e.target.value);
+                }}
               >
                 <option value="collection">Collections</option>
                 <option value="management">Updates and uninstall</option>
