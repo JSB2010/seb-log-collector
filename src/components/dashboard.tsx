@@ -351,6 +351,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
     copy = false,
     method = "GET",
   ) {
+    const page = navigation.current;
     setBusy(true);
     setError("");
     try {
@@ -369,12 +370,15 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
       const text = await r.text();
       if (copy) {
         await navigator.clipboard.writeText(text);
-        setNotice("Script copied");
-      } else save(name, text, "text/plain");
+        if (page === navigation.current) setNotice("Script copied");
+      } else {
+        save(name, text, "text/plain");
+        if (page === navigation.current) setNotice("Script downloaded");
+      }
     } catch (e) {
-      setError((e as Error).message);
+      if (page === navigation.current) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (page === navigation.current) setBusy(false);
     }
   }
   if (me === undefined)
@@ -627,7 +631,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                       "State",
                     ]
                   : view === "logs"
-                    ? ["Source", "Device", "Uploaded", "Size", "Expires", ""]
+                    ? ["Source", "Device", "Received", "Size", "Expires", ""]
                     : view === "enrollment"
                       ? [
                           "Enrollment",
@@ -707,7 +711,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                         </button>
                       </td>
                       <td>{r.assignedLabel || r.serial}</td>
-                      <td>{date(r.uploadedAt)}</td>
+                      <td>{date(r.acceptedAt ?? r.uploadedAt)}</td>
                       <td>{(r.gzipBytes / 1024).toFixed(1)} KiB</td>
                       <td>{date(r.expiresAt)}</td>
                       <td>
@@ -888,6 +892,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                   "assignedLabel",
                   "sourceUser",
                   "uploadedAt",
+                  "acceptedAt",
                   "expiresAt",
                   "rawBytes",
                   "gzipBytes",
