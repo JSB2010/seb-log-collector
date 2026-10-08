@@ -69,3 +69,9 @@ variable "notification_channel_ids" {
   type        = list(string)
   default     = []
 }
+
+variable "notification_email" {
+  description = "Optional operator email for monitoring alerts."
+  type        = string
+  default     = ""
+}

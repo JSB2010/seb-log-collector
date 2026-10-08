@@ -6,7 +6,7 @@ Device authentication: `Authorization: Bearer <installationUUID>.<base64url32Byt
 
 | Route                                      | Purpose                                                          |
 | ------------------------------------------ | ---------------------------------------------------------------- |
-| POST `/api/device/v1/enroll`               | Transactional roster enrollment                                  |
+| POST `/api/device/v1/enroll`               | Transactional Jamf-group or optional roster enrollment             |
 | GET `/api/device/v1/config`                | Pause state, limits, pending requests, enrollment reconciliation |
 | POST `/api/device/v1/collections`          | Idempotent collection UUID / summary                             |
 | POST `/api/device/v1/uploads/prepare`      | Deduplicate or reserve one immutable signed POST                 |
@@ -18,6 +18,8 @@ Device authentication: `Authorization: Bearer <installationUUID>.<base64url32Byt
 Prepare supplies `schemaVersion`, `collectionId`, optional `requestId`, raw/gzip SHA-256 and exact byte sizes, `source`, and `metadata`. The server chooses a PII-free key, reserves device/global daily volume once, and signs an exact bucket/key/type/length POST policy for ten minutes. Submit all returned literal fields, then `file` last. A failed overwrite POST must reconcile completion rather than invent another key. Only a verified acknowledgment confirms delivery.
 
 Metadata includes collector/macOS/SEB versions, architecture, timezone, reported time and optional hostname/console-user evidence. Source includes username, UID, basename, home-relative path, source mtime and byte size. These are client-reported facts, separate from assigned roster identity. No arbitrary command, executable, destination or source path can be supplied by a collection request.
+
+Create an automatic enrollment batch with `{ "mode": "jamf", "label": "Your Jamf group", "ceiling": 1000, "days": 7 }`. The bounded bootstrap authorizes any new serial executing its scoped installer; group membership is enforced by Jamf script delivery, not queried by this service. Enrollment transactions enforce the ceiling, reject conflicting installations, and reconcile an existing credential without consuming another slot. Roster mode accepts `{ "roster": [{ "serial": "SYNTHETIC001" }], "days": 7 }`, optionally `mode: "roster"`, at most 400 entries. Codes are returned once, stored only as hashes, and cannot grant dashboard or retrieval access.
 
 Admin APIs require a current Google-backed session, current Firestore permission and, for mutations, the exact Origin and `x-csrf-token` obtained from `/api/admin/v1/me`. Fleet, logs, collections, requests, batches and audits use cursor pagination. Log preview is at most 128 KiB of escaped text; download streams the accepted gzip generation. Access is rechecked at expiry even if deletion is pending.
 

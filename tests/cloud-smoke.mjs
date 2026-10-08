@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, readFile, mkdir } from "node:fs/promises";
 import { SignJWT } from "jose";
 const env = (name) => {
   assert.ok(process.env[name], `Missing ${name}`);
@@ -183,15 +183,38 @@ const serials = [`SYNTHETIC-${tag}-A`, `SYNTHETIC-${tag}-B`];
 const batch = await api(
   "/api/admin/v1/enrollment-batches",
   "POST",
-  {
-    roster: serials.map((serial) => ({
-      serial,
-      assignedLabel: "Synthetic cloud acceptance fixture",
-    })),
-  },
+  process.env.TEST_JAMF_MODE === "1"
+    ? {
+        mode: "jamf",
+        label: "Synthetic cloud acceptance fixture",
+        ceiling: 2,
+        days: 1,
+      }
+    : {
+        roster: serials.map((serial) => ({
+          serial,
+          assignedLabel: "Synthetic cloud acceptance fixture",
+        })),
+      },
   adminHeaders,
   201,
 );
+if (process.env.TEST_JAMF_MODE === "1") {
+  const response = await fetch(origin + "/collector/install.zsh");
+  assert.ok(
+    response.ok,
+    "Embedded public installer must be available in the deployed container",
+  );
+  assert.equal(
+    hash(Buffer.from(await response.text())),
+    hash(await readFile("public/collector/install.zsh")),
+  );
+  assert.equal(batch.mode, "jamf");
+  assert.equal(batch.origin, origin);
+  ok(
+    "Deployed embedded installer matches the checked release; canonical-origin automatic batch configured",
+  );
+}
 const metadata = {
   collectorVersion: "0.1.0",
   architecture: "arm64",
@@ -226,6 +249,25 @@ for (const serial of serials) {
     authorization: `Bearer ${batch.code}`,
   });
   await api("/api/admin/v1/logs", "GET", undefined, auth, 401);
+}
+if (process.env.TEST_JAMF_MODE === "1") {
+  await api(
+    "/api/device/v1/enroll",
+    "POST",
+    {
+      schemaVersion: 1,
+      installationId: randomUUID(),
+      serial: `SYNTHETIC-${tag}-C`,
+      credentialHash: hash(randomBytes(32)),
+      metadata,
+    },
+    { ...headers, authorization: `Bearer ${batch.code}` },
+    429,
+  );
+  assert.equal((await doc(`enrollmentBatches/${batch.id}`)).count, 2);
+  ok(
+    "Automatic Jamf enrollment without a serial roster; device ceiling enforced",
+  );
 }
 ok("Roster enrollment, response reconciliation, and device/admin separation");
 const d = devices[0],
@@ -295,18 +337,41 @@ assert.ok(
 if (process.env.TEST_NATIVE_MAC === "1") {
   assert.equal(process.platform, "darwin");
   const root = `${process.cwd()}/.local/collector-test`,
-    state = `${root}/state`, stage = `${root}/staging/native space`;
-  await mkdir(`${root}/credentials`, {recursive:true});
-  await mkdir(state,{recursive:true}); await mkdir(stage,{recursive:true});
+    state = `${root}/state`,
+    stage = `${root}/staging/native space`;
+  await mkdir(`${root}/credentials`, { recursive: true });
+  await mkdir(state, { recursive: true });
+  await mkdir(stage, { recursive: true });
   const credential = d.auth.authorization.slice(7).split(".");
-  await writeFile(`${root}/credentials/native-test-device.json`,JSON.stringify({installationId:d.installationId,secret:credential[1]}),{mode:0o600});
-  await writeFile(`${state}/native-bootstrap`,batch.code,{mode:0o600});
-  await writeFile(`${state}/native-enrollment.json`,JSON.stringify({schemaVersion:1,installationId:d.installationId,serial:serials[0],credentialHash:hash(Buffer.from(credential[1],"base64url")),metadata}),{mode:0o600});
-  await writeFile(`${state}/native-policy.json`,JSON.stringify(policy),{mode:0o600});
-  await writeFile(`${stage}/${hash(raw)}.gz`,gz,{mode:0o600});
-  const output = execFileSync("/bin/zsh",["-f","tests/macos-cloud.zsh"],{encoding:"utf8",env:{...process.env,NATIVE_FIXTURE_ROOT:root,TEST_ORIGIN:origin}});
+  await writeFile(
+    `${root}/credentials/native-test-device.json`,
+    JSON.stringify({ installationId: d.installationId, secret: credential[1] }),
+    { mode: 0o600 },
+  );
+  await writeFile(`${state}/native-bootstrap`, batch.code, { mode: 0o600 });
+  await writeFile(
+    `${state}/native-enrollment.json`,
+    JSON.stringify({
+      schemaVersion: 1,
+      installationId: d.installationId,
+      serial: serials[0],
+      credentialHash: hash(Buffer.from(credential[1], "base64url")),
+      metadata,
+    }),
+    { mode: 0o600 },
+  );
+  await writeFile(`${state}/native-policy.json`, JSON.stringify(policy), {
+    mode: 0o600,
+  });
+  await writeFile(`${stage}/${hash(raw)}.gz`, gz, { mode: 0o600 });
+  const output = execFileSync("/bin/zsh", ["-f", "tests/macos-cloud.zsh"], {
+    encoding: "utf8",
+    env: { ...process.env, NATIVE_FIXTURE_ROOT: root, TEST_ORIGIN: origin },
+  });
   console.log(output.trim());
-  ok("Actual native macOS enrollment, authenticated JSON, space-safe GCS upload and completion");
+  ok(
+    "Actual native macOS enrollment, authenticated JSON, space-safe GCS upload and completion",
+  );
 } else {
   const stored = await post();
   assert.equal(stored.status, 201, `GCS upload ${stored.status}`);

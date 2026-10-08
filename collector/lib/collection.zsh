@@ -125,7 +125,11 @@ tick() {
   local reason=$1 configfile="$WORK/config.json" due today minute daily='' request n minimum maximum
   [[ ! -f "$STATE/stopping" ]] || return 0
   [[ ! -f "$STATE/paused" ]] || { set_outcome paused; return 0; }
-  [[ -f $CREDS && ! -L $CREDS ]] || { set_outcome unenrolled; return 0; }
+  if [[ ! -f $CREDS || ! -n $(json_value "$CREDS" deviceId || true) ]]; then
+    if [[ -f "$STATE/enrollment-bootstrap" ]]; then retry_enrollment || return 0
+    else set_outcome unenrolled; return 0; fi
+  fi
+  [[ ! -L $CREDS ]] || return 1
   if seb_running; then set_outcome deferred; return 0; fi
   if ! http GET /api/device/v1/config; then [[ $HTTP_CODE == 401 || $HTTP_CODE == 403 ]] && set_outcome blocked || set_outcome offline; return 0; fi
   /bin/cp "$HTTP_RESPONSE" "$configfile"; print -r -- "$(utc)" > "$STATE/last-contact"

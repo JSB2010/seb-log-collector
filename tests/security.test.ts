@@ -16,6 +16,7 @@ import { MemoryStore } from "../src/server/store";
 import { Service } from "../src/server/service";
 import { verifyGzip } from "../src/server/storage";
 import { parseRoster, csvCell } from "../src/components/csv";
+import { enrollmentInstaller } from "../src/components/enrollment";
 const metadata = {
   collectorVersion: "0.1.0",
   architecture: "arm64",
@@ -100,6 +101,90 @@ async function uploadBody() {
   };
 }
 describe("Enrollment and permissions", () => {
+  it("automatically accepts Jamf-scoped serials while enforcing an atomic batch ceiling", async () => {
+    const managed = await s.createBatch(actor, {
+      mode: "jamf",
+      label: "Synthetic Jamf group",
+      ceiling: 2,
+    });
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, (_, n) =>
+        s.enroll(managed.code, {
+          schemaVersion: 1,
+          installationId: randomUUID(),
+          serial: `JAMF-SYNTHETIC-${n}`,
+          credentialHash: credentialHash(secret()),
+          metadata,
+        }),
+      ),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(2);
+    expect(
+      results
+        .filter((r) => r.status === "rejected")
+        .every((r) => r.reason.code === "batch_limit"),
+    ).toBe(true);
+    expect((await db.get(`enrollmentBatches/${managed.id}`))?.count).toBe(2);
+    expect(
+      await db.query(
+        "enrollmentRoster",
+        [["batchId", "==", managed.id]],
+        "id",
+        undefined,
+        10,
+      ),
+    ).toHaveLength(0);
+    const devices = await db.query(
+      "devices",
+      [["assignedLabel", "==", "Synthetic Jamf group"]],
+      "id",
+      undefined,
+      10,
+    );
+    expect(devices).toHaveLength(2);
+    expect(devices.every((x) => x.enrollmentBatchId === managed.id)).toBe(true);
+    await db.transaction(async (tx) => {
+      const b = await tx.get(`enrollmentBatches/${managed.id}`);
+      tx.set(`enrollmentBatches/${managed.id}`, { ...b, state: "closed" });
+    });
+    await expect(
+      s.enroll(managed.code, {
+        schemaVersion: 1,
+        installationId: randomUUID(),
+        serial: "JAMF-SYNTHETIC-CLOSED",
+        credentialHash: credentialHash(secret()),
+        metadata,
+      }),
+    ).rejects.toMatchObject({ code: "bootstrap_closed" });
+  });
+  it("builds a self-contained scoped installer with enrollment before daemon startup and rejects shell injection", () => {
+    const source =
+      '#!/bin/zsh -f\nAPI_ORIGIN=${API_ORIGIN:-}\n/bin/launchctl bootstrap system "$PLIST"\n';
+    const code = secret(),
+      output = enrollmentInstaller(
+        source,
+        code,
+        "https://diagnostics.example.org",
+      );
+    expect(output).toContain("API_ORIGIN='https://diagnostics.example.org'");
+    expect(output.indexOf("enroll --bootstrap-stdin")).toBeLessThan(
+      output.indexOf("launchctl bootstrap"),
+    );
+    expect(output).toContain("Enrollment pending");
+    expect(() =>
+      enrollmentInstaller(
+        source,
+        code,
+        "https://example.org'; touch /tmp/owned",
+      ),
+    ).toThrow();
+    expect(() =>
+      enrollmentInstaller(source, "bad'code", "https://example.org"),
+    ).toThrow();
+    expect(() =>
+      enrollmentInstaller("not an installer", code, "https://example.org"),
+    ).toThrow();
+  });
   it("uses canonical 32-byte secret decoding and fixed hash vector", () => {
     expect(credentialHash(Buffer.alloc(32).toString("base64url"))).toBe(
       "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925",

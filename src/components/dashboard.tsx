@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "./icon";
 import { csvCell, parseRoster } from "./csv";
+import { enrollmentInstaller } from "./enrollment";
 type Row = Record<string, any>;
 const views = [
   ["fleet", "Fleet"],
@@ -72,6 +73,9 @@ export function Dashboard() {
     [preview, setPreview] = useState<Row | null>(null),
     [batch, setBatch] = useState(false),
     [code, setCode] = useState<Row | null>(null),
+    [enrollmentMode, setEnrollmentMode] = useState("jamf"),
+    [enrollmentLabel, setEnrollmentLabel] = useState(""),
+    [enrollmentCeiling, setEnrollmentCeiling] = useState(1000),
     [adminEmail, setAdminEmail] = useState("");
   const api = useCallback(
     async (path: string, method = "GET", data?: unknown) => {
@@ -264,7 +268,8 @@ export function Dashboard() {
                   {
                     fleet: "Device health and collection activity",
                     logs: "Verified logs available for 90 days",
-                    enrollment: "Approve devices before enrolling them",
+                    enrollment:
+                      "Enroll devices through a scoped Jamf installer",
                     requests: "Pending delivery and collection results",
                     audit: "Administrator and service activity",
                     admins: "Manage dashboard access live",
@@ -527,6 +532,8 @@ export function Dashboard() {
                   ) : view === "enrollment" ? (
                     <>
                       <td>
+                        <strong>{r.label || "Serial roster"}</strong>
+                        <br />
                         <code>{r.id.slice(0, 12)}</code>
                       </td>
                       <td>{date(r.createdAt)}</td>
@@ -922,8 +929,8 @@ export function Dashboard() {
             {code ? (
               <>
                 <p>
-                  Bootstrap code is shown once. Use a restricted Jamf enrollment
-                  script, then close the batch.
+                  Download the installer and scope it to your Jamf group. Each
+                  Mac registers automatically. Close the batch after enrollment.
                 </p>
                 <textarea
                   aria-label="Bootstrap code"
@@ -931,63 +938,157 @@ export function Dashboard() {
                   value={code.code}
                 />
                 <p>
-                  Expires {date(code.expiresAt)} · {code.ceiling} approved
-                  devices
+                  Expires {date(code.expiresAt)} · Up to {code.ceiling} devices
                 </p>
                 <button
                   className="primary"
-                  onClick={() => {
-                    const script = `#!/bin/zsh -f\nset -eu\n[[ $EUID -eq 0 ]] || exit 1\n# Restricted one-time Jamf delivery; remove from scope after enrollment.\nprint -rn -- '${code.code}' | /bin/zsh -f '/Library/Application Support/SOEDiagnostics/bin/soe-diagnostics' enroll --bootstrap-stdin\n`;
-                    save("restricted-enrollment.zsh", script, "text/plain");
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const response = await fetch("/collector/install.zsh", {
+                        cache: "no-store",
+                      });
+                      if (!response.ok)
+                        throw new Error("installer_unavailable");
+                      const script = enrollmentInstaller(
+                        await response.text(),
+                        code.code,
+                        code.origin,
+                      );
+                      save(
+                        "restricted-install-and-enroll.zsh",
+                        script,
+                        "text/plain",
+                      );
+                    } catch (err) {
+                      setError((err as Error).message);
+                    } finally {
+                      setBusy(false);
+                    }
                   }}
                 >
-                  Download restricted enrollment script
+                  Download install and enroll script
                 </button>
               </>
             ) : (
               <>
-                <p>
-                  Upload a CSV with <code>serial</code>. Optional columns:{" "}
-                  <code>assignedLabel</code>, <code>schoolEmail</code>,{" "}
-                  <code>jamfId</code>. At most 400 devices per batch.
-                </p>
                 <label>
-                  Approved serial roster
-                  <input
-                    type="file"
-                    accept=".csv,text/csv"
-                    onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      setBusy(true);
-                      try {
-                        const roster = parseRoster(await f.text());
-                        setCode(
-                          await api("enrollment-batches", "POST", {
-                            roster,
-                            days: 7,
-                          }),
-                        );
-                        await load();
-                      } catch (err) {
-                        setError((err as Error).message);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  />
+                  Enrollment method
+                  <select
+                    value={enrollmentMode}
+                    onChange={(e) => setEnrollmentMode(e.target.value)}
+                  >
+                    <option value="jamf">
+                      Jamf group — automatic acceptance
+                    </option>
+                    <option value="roster">Approved serial roster</option>
+                  </select>
                 </label>
-                <button
-                  onClick={() =>
-                    save(
-                      "enrollment-roster-template.csv",
-                      "serial,assignedLabel,schoolEmail,jamfId\nSYNTHETIC001,Pilot fixture,,\n",
-                      "text/csv",
-                    )
-                  }
-                >
-                  Download CSV template
-                </button>
+                {enrollmentMode === "jamf" ? (
+                  <>
+                    <p>
+                      Scope the downloaded installer to the intended Jamf group.
+                      No serial list is required. Anyone with this temporary
+                      installer can enroll within the window and device limit.
+                    </p>
+                    <label>
+                      Jamf group name
+                      <input
+                        value={enrollmentLabel}
+                        maxLength={200}
+                        onChange={(e) => setEnrollmentLabel(e.target.value)}
+                        placeholder="Your managed Mac group"
+                      />
+                    </label>
+                    <label>
+                      Maximum devices
+                      <input
+                        type="number"
+                        min={1}
+                        max={1000}
+                        value={enrollmentCeiling}
+                        onChange={(e) =>
+                          setEnrollmentCeiling(Number(e.target.value))
+                        }
+                      />
+                    </label>
+                    <button
+                      className="primary"
+                      disabled={
+                        busy ||
+                        !enrollmentLabel.trim() ||
+                        enrollmentCeiling < 1 ||
+                        enrollmentCeiling > 1000
+                      }
+                      onClick={async () => {
+                        setBusy(true);
+                        try {
+                          setCode(
+                            await api("enrollment-batches", "POST", {
+                              mode: "jamf",
+                              label: enrollmentLabel.trim(),
+                              ceiling: enrollmentCeiling,
+                              days: 7,
+                            }),
+                          );
+                          await load();
+                        } catch (err) {
+                          setError((err as Error).message);
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Create Jamf enrollment
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      Upload a CSV with <code>serial</code>. Optional columns:{" "}
+                      <code>assignedLabel</code>, <code>schoolEmail</code>,{" "}
+                      <code>jamfId</code>. At most 400 devices per batch.
+                    </p>
+                    <label>
+                      Approved serial roster
+                      <input
+                        type="file"
+                        accept=".csv,text/csv"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          setBusy(true);
+                          try {
+                            const roster = parseRoster(await f.text());
+                            setCode(
+                              await api("enrollment-batches", "POST", {
+                                roster,
+                                days: 7,
+                              }),
+                            );
+                            await load();
+                          } catch (err) {
+                            setError((err as Error).message);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                      />
+                    </label>
+                    <button
+                      onClick={() =>
+                        save(
+                          "enrollment-roster-template.csv",
+                          "serial,assignedLabel,schoolEmail,jamfId\nSYNTHETIC001,Pilot fixture,,\n",
+                          "text/csv",
+                        )
+                      }
+                    >
+                      Download CSV template
+                    </button>
+                  </>
+                )}
               </>
             )}
             {error && (

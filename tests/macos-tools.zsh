@@ -59,4 +59,14 @@ SOE_TEST_MODE=1 rotate_logs
 [[ $(/usr/bin/stat -f '%z' "$ROOT/logs/collector.log") == 0 ]]
 [[ $(/usr/bin/stat -f '%z' "$ROOT/logs/collector.1.log") == 2097152 ]]
 /bin/rm -rf "$WORK"
-print 'macOS tool checks passed: JSON, stable FD snapshot, spaces, symlinks, hard links, FIFO rejection, gzip, ledger, unenrolled tick, report recovery/failed ack, request replay, log rotation, plist.'
+# Pending enrollment is bounded, retries its exact code, and expires locally.
+source "$project/collector/lib/enrollment.zsh"
+typeset pending="$STATE/enrollment-bootstrap"
+print -rn -- 'synthetic-pending-code' > "$pending"
+enroll() { [[ $(/bin/cat) == 'synthetic-pending-code' ]]; return 1; }
+if retry_enrollment; then print -u2 'Pending enrollment unexpectedly succeeded'; exit 1; fi
+[[ -f $pending ]]
+touch -t 200001010000 "$pending"
+if retry_enrollment; then print -u2 'Expired bootstrap retried'; exit 1; fi
+[[ ! -f $pending && $(<"$STATE/outcome") == bootstrap_expired ]]
+print 'macOS tool checks passed: JSON, stable FD snapshot, spaces, symlinks, hard links, FIFO rejection, gzip, ledger, unenrolled tick, report recovery/failed ack, request replay, log rotation, bounded pending enrollment, plist.'

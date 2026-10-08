@@ -1,10 +1,10 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "schemaVersion": 1,
   "files": [
     {
       "name": "soe-diagnostics",
-      "sha256": "19fece1aea39ba9f494678a508b7a804a8fde79c8c97676269bcd2956d7cac9c"
+      "sha256": "cad06b78e03a739f4b6d1e033233d859793a0b286d91124d7887e24537101bda"
     },
     {
       "name": "read-source",
@@ -12,15 +12,15 @@
     },
     {
       "name": "lib/collection.zsh",
-      "sha256": "debb5ceb7fae45278e8802d8431f36565c32ddee85ca57b6033152e41062c4b8"
+      "sha256": "b067f59fd84fed75e5401f5989ce5be7c6b444ccc56627609e5862dce7f23462"
     },
     {
       "name": "lib/common.zsh",
-      "sha256": "9c719f55b8b4f39d4915f9efd6ad93842c2ba5f5cfd17a9c26842a43a8372223"
+      "sha256": "c5daffe0a68b4f0e6f6158b5c45016ce33b23a8d48df972f4c7792ea9027cfd7"
     },
     {
       "name": "lib/enrollment.zsh",
-      "sha256": "cf2951421510ba370bd9b93a09120ddc7eca251c21ecdced880a47ed7cdfc4c2"
+      "sha256": "ac7301d62955b99dbebac54be2b1dc711479d288f89b4c6b280dedac7d1b605b"
     },
     {
       "name": "lib/http.zsh",

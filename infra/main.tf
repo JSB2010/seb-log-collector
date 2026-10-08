@@ -1,4 +1,5 @@
 locals {
+  notification_channels = concat(var.notification_channel_ids, google_monitoring_notification_channel.operator[*].name)
   service_env = {
 
     GOOGLE_CLOUD_PROJECT = var.project_id
@@ -13,6 +14,13 @@ locals {
 
   }
 
+}
+
+resource "google_monitoring_notification_channel" "operator" {
+  count        = var.notification_email == "" ? 0 : 1
+  display_name = "Diagnostics operator"
+  type         = "email"
+  labels       = { email_address = var.notification_email }
 }
 
 resource "google_storage_bucket" "logs" {
@@ -305,7 +313,7 @@ resource "google_monitoring_alert_policy" "server_errors" {
 
   display_name          = "Diagnostics repeated server errors"
   combiner              = "OR"
-  notification_channels = var.notification_channel_ids
+  notification_channels = local.notification_channels
   conditions {
     display_name = "HTTP 5xx"
     condition_threshold {
@@ -329,7 +337,7 @@ resource "google_monitoring_alert_policy" "server_errors" {
 resource "google_monitoring_alert_policy" "cleanup_overdue" {
   display_name          = "Diagnostics expired artifact cleanup overdue"
   combiner              = "OR"
-  notification_channels = var.notification_channel_ids
+  notification_channels = local.notification_channels
   conditions {
     display_name = "Expired bytes retained for more than 24 hours"
     condition_matched_log {
@@ -369,6 +377,11 @@ resource "google_billing_budget" "project" {
 
   threshold_rules {
     threshold_percent = 1.0
+  }
+
+  all_updates_rule {
+    monitoring_notification_channels = local.notification_channels
+    disable_default_iam_recipients   = false
   }
 
 

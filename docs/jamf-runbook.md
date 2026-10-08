@@ -2,11 +2,13 @@
 
 ## Install and enroll
 
-Enable the existing Jamf School scripting module. Copy the versioned embedded installer to an IT-controlled script and set `API_ORIGIN` to this deployment's HTTPS origin. Scope initially to a pilot group. The script installs fixed protected project files and the LaunchDaemon without downloading executable code. It preserves SEB, original logs, Keychain items, MDM profiles, and school certificates.
+Enable the existing Jamf School scripting module. In the dashboard, create an enrollment batch using **Jamf group — automatic acceptance**, enter the group name and a device ceiling, then download the **install and enroll** script. Scope it to that Jamf group, initially a restricted pilot. Every Mac running the script automatically registers with its own credential; no serial list is required. The group name is an assignment label, not a live Jamf API membership check. Possession of the short-lived bootstrap delivered in the scoped script permits registration within the window and ceiling.
 
-Create an enrollment batch in the dashboard using approved serials. Optional assignment columns are `assignedLabel`, `schoolEmail`, and `jamfId`. A batch has at most 400 serials to keep its creation atomic within Firestore's write limit; split larger fleets into multiple batches. Codes expire after seven days and are displayed once. Download the restricted enrollment script and scope it only to that roster group. Remove the enrollment script from scope and close the batch after successful rollout.
+The downloaded script embeds the checked collector payload and deployment origin, installs fixed protected project files, enrolls, then registers the LaunchDaemon. It downloads no executable code and preserves SEB, original logs, Keychain items, MDM profiles, and school certificates. Bootstrap codes expire after at most seven days and are shown once. Automatic batches admit at most 1,000 registrations. Close the batch and remove the script from scope after rollout; later devices use a fresh batch. Do not publish the downloaded operational script.
 
-Installer/enrollment scope order is not guaranteed. Installation without credentials does not scan source logs. Deliver enrollment after installation is confirmed, and rerun idempotently if the first delivery arrives too early. A saved installation credential recovers a lost enrollment response even after the bootstrap expired.
+An offline install records pending enrollment privately and starts the daemon for retry. No source scan occurs until enrollment succeeds and fresh collection permission is received. The bootstrap is removed on acknowledgment or after seven days locally; the server's shorter expiry still applies. A saved installation credential recovers a lost enrollment response even after bootstrap expiry. Jamf receives failure for a pending initial enrollment, so confirm the eventual fleet record before declaring installation complete.
+
+**Approved serial roster** remains an optional stricter mode. CSV columns are `serial`, optionally `assignedLabel`, `schoolEmail`, and `jamfId`; use at most 400 per atomic batch. Generic install/update scripts remain available for lifecycle operations and contain no bootstrap. The dashboard's combined installer prevents separate installation/enrollment scope ordering problems.
 
 The generic releases contain no bootstrap/device secrets or environment-specific origin. Jamf's restricted delivery does not conceal a secret from a local administrator. The permanent credential is different on each Mac; only its SHA-256 hash is stored on the server.
 
@@ -24,7 +26,7 @@ Regenerate versioned releases after changing source. Update uses the same checke
 
 For rollback, stop the job, verify the previous release checksum/version and SQLite schema compatibility, restore only the old `bin` directory, then register the current plist. Do not restore an older SQLite database or create a new enrollment to hide a failed update. An incomplete update requires operator recovery; it must not be declared successful because files were copied.
 
-To replace credentials, revoke the old installation, explicitly reset the roster serial in its batch (API), and perform a targeted reinstall/re-enrollment. Stable server device IDs preserve accepted logs and deduplication. A revoked credential is never reactivated.
+To replace credentials, revoke the old installation and remove its local credential through a targeted uninstall/reinstall using a fresh automatic batch. If using roster mode, explicitly reset the serial in its batch (API) before re-enrollment. Stable server device IDs preserve accepted logs and deduplication. A revoked credential is never reactivated.
 
 ## Uninstall
 

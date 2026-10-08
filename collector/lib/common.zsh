@@ -82,7 +82,7 @@ status_json() {
   local f=$(/usr/bin/mktemp "$STATE/status.XXXXXXXX")
   json_new "$f"; json_string "$f" collectorVersion "$VERSION"
   json_string "$f" outcome "$([[ -f "$STATE/outcome" ]] && /bin/cat "$STATE/outcome" || print unenrolled)"
-  /usr/bin/plutil -insert enrolled -bool "$([[ -f $CREDS ]] && print YES || print NO)" "$f"
+  /usr/bin/plutil -insert enrolled -bool "$([[ -f $CREDS && -n $(json_value "$CREDS" deviceId || true) ]] && print YES || print NO)" "$f"
   /usr/bin/plutil -insert locallyPaused -bool "$([[ -f "$STATE/paused" ]] && print YES || print NO)" "$f"
   [[ ! -f "$STATE/last-contact" ]] || json_string "$f" lastContact "$(<"$STATE/last-contact")"
   as_json "$f"; /bin/rm -f "$f"

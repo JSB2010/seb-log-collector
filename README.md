@@ -39,7 +39,7 @@ Google OAuth configuration is required for human sign-in. Admins are explicitly 
 
 ## Jamf and rollout
 
-Follow [installation and removal](docs/jamf-runbook.md). Set `API_ORIGIN` only in an IT-controlled copy of the installer. Deliver the one-time bootstrap through a separately restricted Jamf script. Version one supports the standard home-relative SEB log directory. It does not automatically discover custom paths or change privacy settings.
+Follow [installation and removal](docs/jamf-runbook.md). Create a Jamf-group enrollment batch in the dashboard and download its combined install-and-enroll script. Macs running that scoped script register automatically, without a serial list, using a temporary bootstrap and unique permanent credentials. Serial-roster enrollment remains optional. Public generic packages contain no deployment origin or bootstrap; the downloaded operational script must stay restricted. Version one supports the standard home-relative SEB log directory and leaves privacy settings unchanged.
 
 Complete a five-to-ten-device pilot before fleet rollout. Verify the actual launchd/Jamf context, SEB exam deferral, privacy access, sleep/wake, standard and admin users, Intel/Apple silicon where needed, updates, and offline removal. See [acceptance checklist](docs/acceptance.md). A successful cloud upload or shell syntax check is separate evidence from successful managed-device deployment.
 

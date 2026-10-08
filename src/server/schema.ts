@@ -125,12 +125,23 @@ export const rosterEntry = z
     jamfId: text.default(""),
   })
   .strict();
-export const batch = z
-  .object({
-    roster: z.array(rosterEntry).min(1).max(1000),
-    days: z.number().int().min(1).max(7).default(7),
-  })
-  .strict();
+export const batch = z.union([
+  z
+    .object({
+      mode: z.literal("jamf"),
+      label: text.min(1),
+      ceiling: z.number().int().min(1).max(1000).default(1000),
+      days: z.number().int().min(1).max(7).default(7),
+    })
+    .strict(),
+  z
+    .object({
+      mode: z.literal("roster").default("roster"),
+      roster: z.array(rosterEntry).min(1).max(400),
+      days: z.number().int().min(1).max(7).default(7),
+    })
+    .strict(),
+]);
 export const requestSchema = z
   .object({ from: when, to: when })
   .strict()

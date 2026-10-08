@@ -19,34 +19,33 @@ it("enrolls, reports, and paginates 1,000 isolated synthetic devices", async () 
     reportedAt: new Date().toISOString(),
   };
   const devices: string[] = [];
-  for (let start = 0; start < 1000; start += 400) {
-    const roster = Array.from(
-      { length: Math.min(400, 1000 - start) },
-      (_, i) => ({ serial: `COHORT-${String(start + i).padStart(4, "0")}` }),
-    );
-    const batch = await service.createBatch(actor, { roster });
-    for (const { serial } of roster) {
-      const installationId = randomUUID();
-      const enrolled = await service.enroll(batch.code, {
+  const batch = await service.createBatch(actor, {
+    mode: "jamf",
+    label: "Synthetic cohort",
+    ceiling: 1000,
+  });
+  for (let i = 0; i < 1000; i++) {
+    const serial = `COHORT-${String(i).padStart(4, "0")}`;
+    const installationId = randomUUID();
+    const enrolled = await service.enroll(batch.code, {
+      schemaVersion: 1,
+      serial,
+      installationId,
+      credentialHash: credentialHash(secret()),
+      metadata,
+    });
+    devices.push(enrolled.deviceId);
+    await service.collection(
+      { id: enrolled.deviceId, installationId },
+      {
         schemaVersion: 1,
-        serial,
-        installationId,
-        credentialHash: credentialHash(secret()),
+        collectionId: randomUUID(),
+        reason: "daily",
+        startedAt: new Date().toISOString(),
+        outcome: "no_logs",
         metadata,
-      });
-      devices.push(enrolled.deviceId);
-      await service.collection(
-        { id: enrolled.deviceId, installationId },
-        {
-          schemaVersion: 1,
-          collectionId: randomUUID(),
-          reason: "daily",
-          startedAt: new Date().toISOString(),
-          outcome: "no_logs",
-          metadata,
-        },
-      );
-    }
+      },
+    );
   }
   expect(new Set(devices).size).toBe(1000);
   const seen = new Set<string>();

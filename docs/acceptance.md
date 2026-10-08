@@ -7,6 +7,7 @@ No school-wide rollout is implied by building or deploying the server. Use synth
 - Server build/type checks and pinned dependency audit.
 - Exact 32-byte credential vector, approved/unknown/conflicting enrollment, batch expiry, saved-credential recovery and revocation.
 - Device/admin separation, current admin permission, CSRF and unsafe production-default rejection.
+- Automatic Jamf-group acceptance without a serial roster, concurrent enrollment ceiling, closed/expired bootstrap denial, deterministic combined installer and bounded offline enrollment retry.
 - Concurrent reservation/daily accounting, durable completion/deduplication, immutable metadata and no retention extension.
 - Corrupt hashes, sizes, wrapper/trailer, concatenated members, trailing payloads and excessive expansion rejected.
 - Exact application cutoff before physical deletion, cleanup references preserved when deletion fails.

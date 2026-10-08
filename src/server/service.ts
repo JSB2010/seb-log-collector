@@ -104,8 +104,8 @@ export class Service {
         403,
         "bootstrap_closed",
       );
-      requireThat(roster, 403, "serial_not_approved");
-      requireThat(!roster.installationId, 409, "serial_already_claimed");
+      requireThat(batch.mode === "jamf" || roster, 403, "serial_not_approved");
+      requireThat(!roster?.installationId, 409, "serial_already_claimed");
       requireThat(batch.count < batch.ceiling, 429, "batch_limit");
       requireThat(!d?.activeInstallation, 409, "enrollment_conflict");
       tx.set(`installations/${b.installationId}`, {
@@ -119,9 +119,10 @@ export class Service {
         ...d,
         id: deviceId,
         serial: b.serial,
-        assignedLabel: roster.assignedLabel,
-        schoolEmail: roster.schoolEmail,
-        jamfId: roster.jamfId,
+        assignedLabel: roster?.assignedLabel ?? batch.label ?? "",
+        schoolEmail: roster?.schoolEmail ?? "",
+        jamfId: roster?.jamfId ?? "",
+        enrollmentBatchId: batchId,
         activeInstallation: b.installationId,
         state: "active",
         retiredAt: null,
@@ -132,17 +133,18 @@ export class Service {
         metadata: b.metadata,
         searchTokens: searchTokens(
           b.serial,
-          roster.assignedLabel,
-          roster.schoolEmail,
+          roster?.assignedLabel ?? batch.label ?? "",
+          roster?.schoolEmail ?? "",
           b.metadata.hostName,
         ),
       });
-      tx.set(`enrollmentRoster/${roster.id}`, {
-        ...roster,
-        installationId: b.installationId,
-        deviceId,
-        claimedAt: now(),
-      });
+      if (roster)
+        tx.set(`enrollmentRoster/${roster.id}`, {
+          ...roster,
+          installationId: b.installationId,
+          deviceId,
+          claimedAt: now(),
+        });
       tx.set(`enrollmentBatches/${batchId}`, {
         ...batch,
         count: batch.count + 1,
@@ -528,13 +530,14 @@ export class Service {
     const b = schema.batch.parse(input),
       code = secret(),
       id = sha(code);
-    requireThat(
-      new Set(b.roster.map((r) => r.serial)).size === b.roster.length,
-      400,
-      "duplicate_serial",
-    );
+    if (b.mode === "roster")
+      requireThat(
+        new Set(b.roster.map((r) => r.serial)).size === b.roster.length,
+        400,
+        "duplicate_serial",
+      );
     const expiresAt = expiry(b.days);
-    requireThat(b.roster.length <= 400, 413, "roster_too_large_split_batch");
+    const ceiling = b.mode === "jamf" ? b.ceiling : b.roster.length;
     await this.db.transaction(async (tx) => {
       tx.set(`enrollmentBatches/${id}`, {
         id,
@@ -542,12 +545,14 @@ export class Service {
         expiresAt,
         createdAt: now(),
         creator: a.email,
-        ceiling: b.roster.length,
+        mode: b.mode,
+        label: b.mode === "jamf" ? b.label : "",
+        ceiling,
         count: 0,
         state: "open",
         ttlAt: new Date(expiry(90)),
       });
-      for (const r of b.roster) {
+      for (const r of b.mode === "roster" ? b.roster : []) {
         const rid = `${id}-${sha(r.serial)}`;
         tx.set(`enrollmentRoster/${rid}`, {
           ...r,
@@ -560,7 +565,14 @@ export class Service {
       }
       audit(tx, a.email, "create_batch", id);
     });
-    return { id, code, expiresAt, ceiling: b.roster.length };
+    return {
+      id,
+      code,
+      expiresAt,
+      ceiling,
+      mode: b.mode,
+      origin: config().PUBLIC_ORIGIN,
+    };
   }
   async list(kind: string, url: URL) {
     const f: [string, string, unknown][] = [],

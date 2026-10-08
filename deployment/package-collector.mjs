@@ -33,6 +33,8 @@ await writeFile(`jamf/releases/install-${version}.zsh`, install, {
 await writeFile(`jamf/releases/update-${version}.zsh`, install, {
   mode: 0o755,
 });
+await mkdir("public/collector", { recursive: true });
+await writeFile("public/collector/install.zsh", install);
 await writeFile(
   "jamf/releases/uninstall.zsh",
   header + "\n" + (await readFile("jamf/uninstall-body.zsh", "utf8")),
