@@ -237,11 +237,13 @@ ok(
   "Reusable readable enrollment installer, close/reopen, and authenticated Jamf management scripts",
 );
 const metadata = {
-  collectorVersion: "0.1.0",
+  collectorVersion: JSON.parse(await readFile("package.json", "utf8")).version,
+  managementProtocol: 1,
+  computerName: "Synthetic acceptance Mac",
   architecture: "arm64",
   macOSVersion: "synthetic",
   macOSBuild: "SYNTHETIC",
-  sebVersion: null,
+  sebVersion: "synthetic",
   timezone: "Etc/UTC",
   reportedAt: new Date().toISOString(),
 };
@@ -299,6 +301,8 @@ const d = devices[0],
     `Synthetic fixture ${tag}\n<script>never execute</script>\n`,
   ),
   gz = gzipSync(raw);
+const sessionDate = new Date(Date.now() - 3600000).toISOString();
+const basename = `org.safeexambrowser.SafeExamBrowser ${sessionDate.slice(0, 10)}--${sessionDate.slice(11, 23).replaceAll(":", "-").replace(".", "-")}.log`;
 await api(
   "/api/device/v1/collections",
   "POST",
@@ -323,8 +327,8 @@ const input = {
   source: {
     username: "fixture",
     uid: 502,
-    relativePath: "Library/Logs/Safe Exam Browser/fixture.log",
-    basename: "fixture.log",
+    relativePath: `Library/Logs/Safe Exam Browser/${basename}`,
+    basename,
     mtime: new Date().toISOString(),
     bytes: raw.length,
   },
@@ -485,6 +489,157 @@ await api(`/api/admin/v1/devices/${d.deviceId}`, "PATCH", { state: "active" });
 await api(`/api/admin/v1/devices/${devices[1].deviceId}/revoke`, "POST", {});
 await api("/api/device/v1/config", "GET", undefined, devices[1].auth, 403);
 ok("Live central pause/resume and immediate credential revocation");
+assert.equal((await doc(`logs/${policy.uploadId}`)).logStartedAt, sessionDate);
+for (const sort of [
+  "session-newest",
+  "session-oldest",
+  "received-newest",
+  "received-oldest",
+]) {
+  const filter = new URLSearchParams({
+    sort,
+    deviceId: d.deviceId,
+    q: "org",
+    macOS: "synthetic",
+    seb: "synthetic",
+    collector: metadata.collectorVersion,
+    sourceUser: "fixture",
+  });
+  const page = await api(`/api/admin/v1/logs?${filter}`);
+  assert.deepEqual(
+    page.items.map((l) => l.id),
+    [policy.uploadId],
+  );
+  assert.equal(page.items[0].deviceName, metadata.computerName);
+  assert.equal(page.items[0].logDateBasis, "filename");
+}
+ok(
+  "Filename session timestamp, actual device name, and all four cloud-backed catalog sorts with combined filters",
+);
+const destination = await api(
+  "/api/admin/v1/enrollment-batches",
+  "POST",
+  { label: "Synthetic remote-management fixture", ceiling: 2 },
+  adminHeaders,
+  201,
+);
+assert.equal(
+  (await doc(`enrollmentBatches/${destination.id}`)).expiresAt,
+  null,
+);
+assert.ok(
+  (await api("/api/admin/v1/enrollment-groups")).items.some(
+    (g) => g.id === destination.id,
+  ),
+);
+await api(`/api/admin/v1/devices/${d.deviceId}`, "PATCH", {
+  enrollmentGroupId: destination.id,
+});
+assert.equal((await doc(`enrollmentBatches/${batch.id}`)).count, 0);
+assert.equal((await doc(`enrollmentBatches/${destination.id}`)).count, 1);
+assert.equal((await doc(`devices/${d.deviceId}`)).enrollmentBatchId, batch.id);
+for (const action of ["pause", "resume"]) {
+  const operationId = randomUUID();
+  const result = await api(
+    `/api/admin/v1/enrollment-batches/${destination.id}/actions`,
+    "POST",
+    { action, operationId },
+  );
+  assert.equal(result.results[d.deviceId], "completed");
+  assert.equal(
+    (await api("/api/device/v1/config", "GET", undefined, d.auth)).paused,
+    action === "pause",
+  );
+  assert.deepEqual(
+    (
+      await api(
+        `/api/admin/v1/enrollment-batches/${destination.id}/actions`,
+        "POST",
+        { action, operationId },
+      )
+    ).results,
+    result.results,
+  );
+}
+ok(
+  "Permanent group lookup, atomic membership counts, preserved provenance, and replay-safe bulk pause/resume",
+);
+const cancelled = await api(
+  `/api/admin/v1/devices/${d.deviceId}/commands`,
+  "POST",
+  { action: "update" },
+  adminHeaders,
+  201,
+);
+await api(`/api/admin/v1/deviceCommands/${cancelled.id}`, "DELETE");
+const command = await api(
+  `/api/admin/v1/devices/${d.deviceId}/commands`,
+  "POST",
+  { action: "update" },
+  adminHeaders,
+  201,
+);
+assert.equal(
+  (await api("/api/device/v1/config", "GET", undefined, d.auth)).commands[0].id,
+  command.id,
+);
+await api(
+  `/api/admin/v1/devices/${d.deviceId}/commands`,
+  "POST",
+  { action: "uninstall" },
+  adminHeaders,
+  409,
+);
+const artifact = await fetch(origin + command.path);
+assert.equal(artifact.status, 200);
+assert.equal(hash(Buffer.from(await artifact.arrayBuffer())), command.sha256);
+const acknowledge = (c, body, status = 200) =>
+  api(`/api/device/v1/commands/${c.id}/ack`, "POST", body, d.auth, status);
+await acknowledge(
+  command,
+  { state: "completed", result: "installed", version: command.version },
+  409,
+);
+await acknowledge(command, { state: "deferred", result: "busy" });
+await acknowledge(command, { state: "running" });
+await acknowledge(command, {
+  state: "completed",
+  result: "installed",
+  version: command.version,
+});
+assert.equal(
+  (await doc(`devices/${d.deviceId}`)).metadata.collectorVersion,
+  command.version,
+);
+ok(
+  "Pinned deployed update artifact, single pending command, cancellation, and exact-version device acknowledgment",
+);
+const removal = await api(
+  `/api/admin/v1/devices/${d.deviceId}/commands`,
+  "POST",
+  { action: "uninstall" },
+  adminHeaders,
+  201,
+);
+await acknowledge(removal, { state: "running" });
+await api("/api/device/v1/config", "GET", undefined, d.auth, 403);
+await acknowledge(removal, { state: "completed", result: "removed" });
+assert.equal((await doc(`enrollmentBatches/${destination.id}`)).count, 0);
+await api(`/api/admin/v1/enrollment-batches/${destination.id}`, "PATCH", {
+  state: "deleted",
+});
+await api(`/api/admin/v1/enrollment-batches/${destination.id}`, "PATCH", {
+  state: "open",
+});
+await api(`/api/admin/v1/enrollment-batches/${destination.id}`, "PATCH", {
+  state: "deleted",
+});
+await api(`/api/admin/v1/enrollment-batches/${batch.id}`, "PATCH", {
+  state: "deleted",
+});
+ok(
+  "Remote teardown revokes data access, permits only removal acknowledgment, and empty groups delete/restore",
+);
 const log = await doc(`logs/${policy.uploadId}`);
 await doc(`logs/${policy.uploadId}`, {
   ...log,
@@ -502,6 +657,7 @@ evidence.synthetic = {
   deviceIds: devices.map((x) => x.deviceId),
   installationIds: devices.map((x) => x.installationId),
   batchId: batch.id,
+  managementBatchId: destination.id,
   logId: policy.uploadId,
   objectKey: policy.fields.key,
   quotaPath,
