@@ -86,14 +86,15 @@ if (entry) {
   assert.equal(entry.active, true);
   assert.ok(!entry.sub || entry.sub === identity.sub);
 }
-await doc(`admins/${aid}`, {
-  ...entry,
-  id: aid,
-  email: account,
-  active: true,
-  sub: identity.sub,
-  createdAt: entry?.createdAt ?? new Date().toISOString(),
-});
+if (!entry)
+  await doc(`admins/${aid}`, {
+    ...entry,
+    id: aid,
+    email: account,
+    active: true,
+    sub: identity.sub,
+    createdAt: entry?.createdAt ?? new Date().toISOString(),
+  });
 const csrf = randomBytes(32).toString("base64url");
 const key = cli(
   "secrets",
@@ -163,13 +164,14 @@ await api("/api/internal/v1/maintenance", "POST", {}, {}, 401);
 ok(
   "Healthy production configuration; unauthenticated, development-header, and unsigned maintenance access denied",
 );
-await api(
-  "/api/admin/v1/admins",
-  "POST",
-  { email: account, active: false },
-  adminHeaders,
-  409,
+// Last-admin rejection is covered by isolated server tests. Never disable an
+// existing operator in a live deployment, even when it currently has one admin.
+assert.ok((await doc("settings/admins")).count >= 1);
+assert.equal((await doc(`admins/${aid}`)).active, true);
+ok(
+  "Existing administrator access preserved; last-admin guard covered by server regression tests",
 );
+
 await api(
   "/api/admin/v1/admins",
   "POST",
@@ -177,7 +179,7 @@ await api(
   { ...adminHeaders, "x-csrf-token": "wrong" },
   403,
 );
-ok("Last-admin and CSRF protections");
+ok("CSRF protection");
 const tag = randomBytes(5).toString("hex").toUpperCase();
 const serials = [`SYNTHETIC-${tag}-A`, `SYNTHETIC-${tag}-B`];
 const batch = await api(
@@ -499,7 +501,7 @@ for (const sort of [
   const filter = new URLSearchParams({
     sort,
     deviceId: d.deviceId,
-    q: "org",
+    q: "fixture",
     macOS: "synthetic",
     seb: "synthetic",
     collector: metadata.collectorVersion,
