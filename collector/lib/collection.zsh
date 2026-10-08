@@ -35,12 +35,23 @@ collection_report() {
 ack_request() { [[ -z $REQUEST_ID ]] || http POST "/api/device/v1/requests/$REQUEST_ID/ack" "{\"state\":\"$1\"}"; }
 has_budget() { (( SECONDS-COLLECTOR_START < 270 )) && [[ ! -f "$STATE/stopping" ]] && ! seb_running; }
 stage_cleanup() {
-  local hash created age used
-  for hash in ${(@f)$(ledger_sql "SELECT raw_hash FROM uploads WHERE state!='confirmed' AND created_at < $(($( /bin/date +%s)-604800));")}; do
+  local hash expired known_state staged
+  expired=$(ledger_sql "SELECT raw_hash FROM uploads WHERE state!='confirmed' AND created_at < $(($( /bin/date +%s)-604800));") || return 1
+  for hash in ${(@f)expired}; do
     [[ $hash == [a-f0-9]## && ${#hash} == 64 ]] || continue
-    /bin/rm -f "$STAGE/$hash.gz"; ledger_sql "UPDATE uploads SET state='discovered',last_error='staging_evicted',retry_at=0 WHERE raw_hash=$(sql_quote "$hash");"
+    ledger_sql "UPDATE uploads SET state='discovered',last_error='staging_evicted',retry_at=0 WHERE raw_hash=$(sql_quote "$hash");" || return 1
+    /bin/rm -f "$STAGE/$hash.gz"
   done
   /usr/bin/find "$STAGE" -type f -name '*.raw' -mtime +1 -delete
+  /usr/bin/find "$STAGE" -type f -name '*.gz.tmp' -mtime +1 -delete
+  # Crashes between compression and the ledger INSERT can leave orphan payloads.
+  # Keep recent ones for source rediscovery; bound those no longer discoverable.
+  for staged in "$STAGE"/*.gz(N); do
+    hash=${staged:t:r}
+    [[ ! -L $staged && $hash == [a-f0-9]## && ${#hash} == 64 ]] || continue
+    known_state=$(ledger_sql "SELECT state FROM uploads WHERE raw_hash=$(sql_quote "$hash");") || return 1
+    if [[ -z $known_state ]] && (( $(/bin/date +%s)-$(/usr/bin/stat -f '%m' "$staged") > 604800 )); then /bin/rm -f "$staged"; fi
+  done
   ledger_sql "DELETE FROM settings WHERE key LIKE 'request_%' AND CAST(substr(value,38) AS INTEGER) < $(($( /bin/date +%s)-604800));"
 }
 upload_one() {
@@ -62,14 +73,14 @@ upload_one() {
   [[ $state == reserved ]] || return 1
   /bin/cp "$HTTP_RESPONSE" "$WORK/policy.json"; uploadid=$(json_value "$WORK/policy.json" uploadId)
   [[ $uploadid == [0-9a-f-]## && ${#uploadid} == 36 ]] || return 1
-  ledger_sql "UPDATE uploads SET state='authorized',upload_id=$(sql_quote "$uploadid") WHERE raw_hash=$(sql_quote "$hash");"
+  ledger_sql "UPDATE uploads SET state='authorized',upload_id=$(sql_quote "$uploadid") WHERE raw_hash=$(sql_quote "$hash");" || return 1
   has_budget || return 1
   if ! post_gcs "$WORK/policy.json" "$STAGE/$hash.gz"; then
     # Existing immutable objects may reject a repeated POST. Completion decides.
     if http POST "/api/device/v1/uploads/$uploadid/complete" '{}'; then confirm_row "$hash" "$HTTP_RESPONSE"; return; fi
     retry_row "$hash" "upload_$HTTP_CODE"; return 1
   fi
-  ledger_sql "UPDATE uploads SET state='uploaded_unconfirmed' WHERE raw_hash=$(sql_quote "$hash");"
+  ledger_sql "UPDATE uploads SET state='uploaded_unconfirmed' WHERE raw_hash=$(sql_quote "$hash");" || return 1
   if http POST "/api/device/v1/uploads/$uploadid/complete" '{}'; then confirm_row "$hash" "$HTTP_RESPONSE"; else retry_row "$hash" "complete_$HTTP_CODE"; return 1; fi
 }
 retry_staged() {
@@ -81,7 +92,7 @@ retry_staged() {
   done
 }
 snapshot() {
-  local user=$1 user_home=$2 uid=$3 name=$4 min=$5 max=$6 source_key source_stat raw="$STAGE/$$.raw" size hash gz ghash source="$WORK/source.json" mtime used free
+  local user=$1 user_home=$2 uid=$3 name=$4 min=$5 max=$6 source_key source_stat raw="$STAGE/$$.raw" size hash gz ghash source="$WORK/source.json" mtime used free known_state
   source_key="$uid:$name"; source_stat=$(/usr/bin/stat -f '%d:%i:%z:%m' "$user_home/Library/Logs/Safe Exam Browser/$name" 2>/dev/null) || return 1
   # Explicit requests rehash; routine stat-cache hits remain a performance hint.
   if [[ $COLLECTION_REASON != on_demand && -n $(ledger_sql "SELECT raw_hash FROM uploads WHERE state='confirmed' AND source_key=$(sql_quote "$source_key") AND source_stat=$(sql_quote "$source_stat") LIMIT 1;") ]]; then SKIPPED=$((SKIPPED+1)); return 0; fi
@@ -91,8 +102,10 @@ snapshot() {
   if ! reader "$user" read "$user_home" "$uid" "$min" "$max" "$name" > "$raw"; then /bin/rm -f "$raw"; return 1; fi
   [[ $(/usr/bin/stat -f '%z' "$raw") == $size ]] || { /bin/rm -f "$raw"; return 1; }
   hash=$(hash_file "$raw") || { /bin/rm -f "$raw"; return 1; }
-  if [[ $(ledger_sql "SELECT state FROM uploads WHERE raw_hash=$(sql_quote "$hash");") == confirmed ]]; then /bin/rm -f "$raw"; SKIPPED=$((SKIPPED+1)); return 0; fi
-  if [[ -f "$STAGE/$hash.gz" ]]; then /bin/rm -f "$raw"; return 0; fi
+  known_state=$(ledger_sql "SELECT state FROM uploads WHERE raw_hash=$(sql_quote "$hash");") || { /bin/rm -f "$raw"; return 1; }
+  if [[ $known_state == confirmed ]]; then /bin/rm -f "$raw"; SKIPPED=$((SKIPPED+1)); return 0; fi
+  if [[ -f "$STAGE/$hash.gz" && -n $known_state ]]; then /bin/rm -f "$raw"; return 0; fi
+  # Rebuild an untracked payload from the verified snapshot, then attach a row.
   /usr/bin/gzip -1 -n -c "$raw" > "$STAGE/$hash.gz.tmp" || { /bin/rm -f "$raw" "$STAGE/$hash.gz.tmp"; return 1; }; /bin/rm -f "$raw"
   gz=$(/usr/bin/stat -f '%z' "$STAGE/$hash.gz.tmp"); (( gz<=MAX_GZIP )) || { /bin/rm -f "$STAGE/$hash.gz.tmp"; return 1; }; /bin/mv "$STAGE/$hash.gz.tmp" "$STAGE/$hash.gz"
   ghash=$(hash_file "$STAGE/$hash.gz"); mtime=$(/usr/bin/stat -f '%m' "$user_home/Library/Logs/Safe Exam Browser/$name")
@@ -107,7 +120,7 @@ scan() {
     has_budget || return 1
     user_home=$(/usr/bin/dscl . -read "/Users/$user" NFSHomeDirectory | /usr/bin/sed 's/^NFSHomeDirectory: //')
     [[ $user_home == /Users/* && ! -L $user_home ]] || continue
-    local include exclude
+    local include='' exclude=''
     include=$(/usr/bin/plutil -extract includeUsers json -o - "$CONFIG" 2>/dev/null || true); exclude=$(/usr/bin/plutil -extract excludeUsers json -o - "$CONFIG" 2>/dev/null || true)
     [[ -z $include || $include == '[]' || $include == *"\"$user\""* ]] || continue
     [[ -z $exclude || $exclude != *"\"$user\""* ]] || continue
@@ -162,6 +175,7 @@ run_collection() {
     [[ -z $REQUEST_ID ]] || save_setting "request_$REQUEST_ID" "$COLLECTION_ID:$(/bin/date +%s)"
   fi
   FOUND=0; CONFIRMED=0; FAILED=0; SKIPPED=0; SCAN_OUTCOME=no_logs
+  /bin/rm -f "$STATE/last-error"
   METADATA="$WORK/metadata.json"; metadata "$METADATA"
   collection_report running || return 1
   ack_request running || return 1

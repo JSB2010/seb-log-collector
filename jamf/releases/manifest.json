@@ -1,10 +1,10 @@
 {
-  "version": "0.1.2",
+  "version": "0.1.3",
   "schemaVersion": 1,
   "files": [
     {
       "name": "soe-diagnostics",
-      "sha256": "b5441b41d6544d053ebdc349d2b01807b6c90585cf7cf082713652176fbddb85"
+      "sha256": "6e02674a2fdc34224a2567613b985425cf6fbba91baedfd7808e099ebd5fbc92"
     },
     {
       "name": "read-source",
@@ -12,11 +12,11 @@
     },
     {
       "name": "lib/collection.zsh",
-      "sha256": "b067f59fd84fed75e5401f5989ce5be7c6b444ccc56627609e5862dce7f23462"
+      "sha256": "e49e67248534477ebea47aca5d36432d8941d250fa8ddf6b280fbe312b8ef236"
     },
     {
       "name": "lib/common.zsh",
-      "sha256": "c5daffe0a68b4f0e6f6158b5c45016ce33b23a8d48df972f4c7792ea9027cfd7"
+      "sha256": "67f8b1829c1740afc13cb80458e828811b1e5089c882ebaa0cb331eecdd694b3"
     },
     {
       "name": "lib/enrollment.zsh",
@@ -28,7 +28,7 @@
     },
     {
       "name": "lib/ledger.zsh",
-      "sha256": "734aa5e5c5d8cdd27ee894e3334b957392133305dfc26d08a24d71ac35179899"
+      "sha256": "1f2ef9b42f9f10426dbc48f2912fc9d9e33b4728011d6ecea07034a2c0950cc6"
     },
     {
       "name": "lib/metadata.zsh",

@@ -12,6 +12,7 @@ No school-wide rollout is implied by building or deploying the server. Use synth
 - Corrupt hashes, sizes, wrapper/trailer, concatenated members, trailing payloads and excessive expansion rejected.
 - Exact application cutoff before physical deletion, cleanup references preserved when deletion fails.
 - Native macOS JSON, SQLite, stable descriptor snapshots, spaces, symlink/hard-link/FIFO rejection, gzip and plist checks.
+- Native snapshot-to-acknowledgment collection with apostrophes, backslashes, Unicode and SQL-like metadata; orphan recovery/expiry, payload preservation on ledger write failure, safe error output and confirmed-source deduplication.
 - Local API smoke and browser checks for fleet, pause/resume, collection requests, enrollment and live admin management.
 - A 1,000-device synthetic memory cohort verifies enrollment, reporting, and complete cursor pagination. It does not certify Cloud Run throughput, concurrent live uploads, or managed fleet capacity.
 

@@ -1,5 +1,11 @@
 typeset -r LEDGER="$STATE/ledger.sqlite"
-ledger_sql() { /usr/bin/sqlite3 -batch -bail "$LEDGER" "$1"; }
+ledger_sql() {
+  local code=0
+  # SQLite parser errors may echo SQL containing source-user/device metadata.
+  /usr/bin/sqlite3 -batch -bail "$LEDGER" "$1" 2>/dev/null || code=$?
+  if (( code != 0 )); then set_error ledger_error; print -u2 "SOE Diagnostics: ledger operation failed (SQLite exit $code)"; fi
+  return $code
+}
 ledger_init() {
   [[ ! -L $LEDGER ]] || die ledger_symlink
   ledger_sql 'PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS uploads(raw_hash TEXT PRIMARY KEY,gzip_hash TEXT,raw_bytes INTEGER,gzip_bytes INTEGER,source_json TEXT,metadata_json TEXT,collection_id TEXT,request_id TEXT,upload_id TEXT,state TEXT NOT NULL,attempts INTEGER DEFAULT 0,retry_at INTEGER DEFAULT 0,last_error TEXT,ack_json TEXT,created_at INTEGER,source_key TEXT,source_stat TEXT); PRAGMA user_version=1;' >/dev/null
@@ -17,6 +23,6 @@ confirm_row() {
   local hash=$1 ack=$2 returned
   returned=$(json_value "$ack" acknowledgment.rawSha256) || return 1
   [[ $returned == $hash ]] || return 1
-  ledger_sql "UPDATE uploads SET state='confirmed',ack_json=$(sql_quote "$(as_json "$ack")"),last_error=NULL WHERE raw_hash=$(sql_quote "$hash");"
+  ledger_sql "UPDATE uploads SET state='confirmed',ack_json=$(sql_quote "$(as_json "$ack")"),last_error=NULL WHERE raw_hash=$(sql_quote "$hash");" || return 1
   /bin/rm -f "$STAGE/$hash.gz"
 }

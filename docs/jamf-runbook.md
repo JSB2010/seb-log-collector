@@ -18,6 +18,8 @@ The daemon runs a bounded tick every 30 minutes and exits. Daily due times are s
 
 `status --json` reports nonsecret local state. The dashboard shows last contact, collection reports and quota/read problems. A sleeping/offline Mac is not instantly reachable. Central requests expire after 24 hours. Local pause/resume scripts work without network. The source helper uses the source user's UID/groups; it cannot use root's privileges to read private files.
 
+A collection failure can occur before upload. A local `lastError` of `ledger_error` identifies a failed SQLite operation; collector errors omit source/device metadata. Diagnose the local status and ledger before treating every failed collection as a network outage.
+
 Terminal reports remain in private state until delivery and request acknowledgment succeed, with a seven-day/100-report bound. Collector-owned logs rotate at 2 MiB with three archived files retained for at most seven days. Original SEB logs are never rotated or deleted by the collector.
 
 ## Update and recover
@@ -25,6 +27,8 @@ Terminal reports remain in private state until delivery and request acknowledgme
 Regenerate versioned releases after changing source. Update uses the same checked embedded installer, stops the known job, checks the full staged payload, refuses incompatible database downgrades, and preserves credentials, the ledger, staging and pause state. The previous `bin` tree remains under the project-owned `previous` directory. Inspect the update result and daemon registration before declaring success.
 
 Version 0.1.2 corrects native `chown` and `readlink` paths and checks required tools before stopping a job. For the 0.1.1 installer failure reporting `/bin/chown`, replace the Jamf script with a newly downloaded install-and-enroll script and run it again on the same restricted scope. Reuse the original operational bootstrap only while its batch remains open and unexpired; otherwise create a fresh batch. The installer repairs the partial files while preserving existing configuration and device credentials. Verify a successful Jamf result, collector version, and a Fleet record before expanding scope.
+
+Version 0.1.3 corrects SQLite quoting for apostrophes in computer names, filenames and other metadata, and hashing of filenames containing backslashes. It recovers compressed files left without a ledger row by rebuilding them from the verified original source during discovery. Update existing installations with the generic updater, then run `collect-now.zsh` in the same restricted scope to trigger discovery immediately. Confirm accepted logs, a successful collection report and no local staged backlog. Keep the original enrollment and ledger; re-enrollment does not repair this failure. A failed ledger confirmation or expiry update preserves its staged payload. Untracked payloads expire after seven days and incomplete compression after one day; original SEB logs remain untouched.
 
 For rollback, stop the job, verify the previous release checksum/version and SQLite schema compatibility, restore only the old `bin` directory, then register the current plist. Do not restore an older SQLite database or create a new enrollment to hide a failed update. An incomplete update requires operator recovery; it must not be declared successful because files were copied.
 

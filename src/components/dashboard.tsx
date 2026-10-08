@@ -31,7 +31,7 @@ function health(d: Row) {
   return (
     (
       {
-        failed: "Upload failing",
+        failed: "Collection failed",
         blocked: "Blocked",
         deferred: "Deferred",
         no_logs: "Idle",

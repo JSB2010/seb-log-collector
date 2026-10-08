@@ -305,7 +305,7 @@ code {
 }
 .state.revoked:before,
 .state.blocked:before,
-.state.upload-failing:before {
+.state.collection-failed:before {
   background: #d64747;
 }
 .footnote {

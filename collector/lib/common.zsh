@@ -8,16 +8,17 @@ tool_check() {
   [[ $API_ORIGIN == https://* && $API_ORIGIN != *[$'\n\r\t "\\']* && ${API_ORIGIN#https://} != */* && ${API_ORIGIN#https://} != *'@'* && ${API_ORIGIN#https://} != *'?'* && ${API_ORIGIN#https://} != *'#'* ]] || die invalid_api_origin
 }
 utc() { /bin/date -u '+%Y-%m-%dT%H:%M:%SZ'; }
-hash_file() { /usr/bin/shasum -a 256 -- "$1" | /usr/bin/awk '{print $1}'; }
+hash_file() { /usr/bin/shasum -a 256 < "$1" | /usr/bin/awk '{print $1}'; }
 json_new() { print -r -- '{"_soe_init":true}' > "$1"; }
 json_string() { /usr/bin/plutil -insert "$2" -string "$3" "$1"; /usr/bin/plutil -remove _soe_init "$1" 2>/dev/null || true; }
 json_int() { /usr/bin/plutil -insert "$2" -integer "$3" "$1"; /usr/bin/plutil -remove _soe_init "$1" 2>/dev/null || true; }
 json_value() { /usr/bin/plutil -extract "$2" raw -o - "$1" 2>/dev/null; }
 json_object() { /usr/bin/plutil -insert "$2" -json "$(/bin/cat "$3")" "$1"; }
 as_json() { /usr/bin/plutil -convert json -o - "$1"; }
-sql_quote() { local s=$1; print -rn -- "'${s//\'/\'\'}'"; }
+sql_quote() { local s=$1 apostrophe="'"; print -rn -- "'${s//$apostrophe/$apostrophe$apostrophe}'"; }
 atomic_json() { /usr/bin/plutil -convert json "$1" && /bin/chmod 600 "$1" && /bin/mv -f "$1" "$2"; }
 set_outcome() { print -r -- "$1" > "$STATE/outcome.tmp"; /bin/mv -f "$STATE/outcome.tmp" "$STATE/outcome"; }
+set_error() { print -r -- "$1" > "$STATE/last-error.tmp"; /bin/mv -f "$STATE/last-error.tmp" "$STATE/last-error"; }
 rotate_logs() {
   local dir='/Library/Logs/SOEDiagnostics' file old
   [[ ${SOE_TEST_MODE:-0} != 1 ]] || dir="$ROOT/logs"
@@ -85,5 +86,6 @@ status_json() {
   /usr/bin/plutil -insert enrolled -bool "$([[ -f $CREDS && -n $(json_value "$CREDS" deviceId || true) ]] && print YES || print NO)" "$f"
   /usr/bin/plutil -insert locallyPaused -bool "$([[ -f "$STATE/paused" ]] && print YES || print NO)" "$f"
   [[ ! -f "$STATE/last-contact" ]] || json_string "$f" lastContact "$(<"$STATE/last-contact")"
+  [[ ! -f "$STATE/last-error" ]] || json_string "$f" lastError "$(<"$STATE/last-error")"
   as_json "$f"; /bin/rm -f "$f"
 }

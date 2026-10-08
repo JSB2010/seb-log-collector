@@ -29,5 +29,6 @@ jobs:
           node tests/macos-executables.mjs
           node tests/macos-installer.mjs
           /bin/zsh -f tests/macos-tools.zsh
+          /bin/zsh -f tests/macos-collection.zsh
       - name: Verify release checksums
         run: cd jamf/releases && shasum -a 256 -c SHA256SUMS
