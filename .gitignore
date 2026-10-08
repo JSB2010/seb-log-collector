@@ -1,0 +1,16 @@
+node_modules/
+.next/
+coverage/
+.DS_Store
+.env*
+!.env.example
+.local/
+*.tfstate*
+.terraform/
+*.tfvars
+!*.example.tfvars
+*.log
+test-results/
+playwright-report/
+
+tsconfig.tsbuildinfo

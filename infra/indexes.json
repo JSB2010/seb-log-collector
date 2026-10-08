@@ -1,0 +1,1898 @@
+{
+  "devices-searchTokens-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_macOSVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_sebVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_macOSVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_sebVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_macOSVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_sebVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_macOSVersion-metadata_sebVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_macOSVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_sebVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_macOSVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_sebVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_macOSVersion-metadata_sebVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_macOSVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_sebVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_macOSVersion-metadata_sebVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_macOSVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_sebVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_macOSVersion-metadata_sebVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_macOSVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_sebVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-id": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-state-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-metadata_macOSVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-metadata_sebVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-state-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-metadata_macOSVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-metadata_sebVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-state-metadata_macOSVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-state-metadata_sebVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-state-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-metadata_macOSVersion-metadata_sebVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-metadata_macOSVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-metadata_sebVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-state-metadata_macOSVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-state-metadata_sebVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-state-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-metadata_macOSVersion-metadata_sebVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-metadata_macOSVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-metadata_sebVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-state-metadata_macOSVersion-metadata_sebVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-state-metadata_macOSVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-state-metadata_sebVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-state-metadata_macOSVersion-metadata_sebVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-state-metadata_macOSVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-state-metadata_sebVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-state-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-searchTokens-state-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "collections-deviceId-receivedAt": {
+    "collection": "collections",
+    "fields": [
+      {
+        "field_path": "deviceId",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "receivedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-deviceId-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "deviceId",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "logs-sourceUser-acceptedAt": {
+    "collection": "logs",
+    "fields": [
+      {
+        "field_path": "sourceUser",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "acceptedAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "collectionRequests-deviceId-state-id": {
+    "collection": "collectionRequests",
+    "fields": [
+      {
+        "field_path": "deviceId",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "collectionRequests-deviceId-id": {
+    "collection": "collectionRequests",
+    "fields": [
+      {
+        "field_path": "deviceId",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "sessionLinks-instance-session-id": {
+    "collection": "sessionLinks",
+    "fields": [
+      {
+        "field_path": "instance",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "session",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "sessionLinks-logId-id": {
+    "collection": "sessionLinks",
+    "fields": [
+      {
+        "field_path": "logId",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "id",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_macOSVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_sebVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_macOSVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_sebVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_macOSVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_sebVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_macOSVersion-metadata_sebVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_macOSVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_sebVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_macOSVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_sebVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_macOSVersion-metadata_sebVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_macOSVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_sebVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_macOSVersion-metadata_sebVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_macOSVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_sebVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_macOSVersion-metadata_sebVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_macOSVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_sebVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-state-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  },
+  "devices-searchTokens-state-metadata_macOSVersion-metadata_sebVersion-metadata_collectorVersion-lastSeenAt": {
+    "collection": "devices",
+    "fields": [
+      {
+        "field_path": "searchTokens",
+        "array_config": "CONTAINS"
+      },
+      {
+        "field_path": "state",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.macOSVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.sebVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "metadata.collectorVersion",
+        "order": "ASCENDING"
+      },
+      {
+        "field_path": "lastSeenAt",
+        "order": "ASCENDING"
+      }
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "seb-log-collector",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "release:collector": "node deployment/package-collector.mjs",
+    "check:collector": "for script in collector/soe-diagnostics collector/read-source collector/lib/*.zsh jamf/*.zsh jamf/releases/*.zsh; do zsh -n \"$script\" || exit; done"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "9.3.1",
+    "@google-cloud/storage": "8.3.0",
+    "google-auth-library": "11.2.0",
+    "jose": "6.2.12",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "prettier": "3.9.9",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}

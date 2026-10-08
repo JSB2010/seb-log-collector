@@ -1,0 +1,38 @@
+{
+  "version": "0.1.0",
+  "schemaVersion": 1,
+  "files": [
+    {
+      "name": "soe-diagnostics",
+      "sha256": "1ca2f7a637c5c8b657b9bfd07b6cc838e0322def86faeace537f88d4ed52e86d"
+    },
+    {
+      "name": "read-source",
+      "sha256": "18b6fda135e1a68980130f0b1c44a051ec196e114ecd0737de9d458d97811397"
+    },
+    {
+      "name": "lib/collection.zsh",
+      "sha256": "debb5ceb7fae45278e8802d8431f36565c32ddee85ca57b6033152e41062c4b8"
+    },
+    {
+      "name": "lib/common.zsh",
+      "sha256": "9c719f55b8b4f39d4915f9efd6ad93842c2ba5f5cfd17a9c26842a43a8372223"
+    },
+    {
+      "name": "lib/enrollment.zsh",
+      "sha256": "cf2951421510ba370bd9b93a09120ddc7eca251c21ecdced880a47ed7cdfc4c2"
+    },
+    {
+      "name": "lib/http.zsh",
+      "sha256": "91a6529294ac65d187af57ee78178dba241973c16e91a3d964d0ffae2fc144c4"
+    },
+    {
+      "name": "lib/ledger.zsh",
+      "sha256": "734aa5e5c5d8cdd27ee894e3334b957392133305dfc26d08a24d71ac35179899"
+    },
+    {
+      "name": "lib/metadata.zsh",
+      "sha256": "02072f93b0c8574182e48718619588b27d6ec6ce7342322715ebbb3288459caf"
+    }
+  ]
+}

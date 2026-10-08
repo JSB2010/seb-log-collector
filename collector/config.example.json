@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "apiOrigin": "https://your-cloud-run-service.run.app",
+  "includeUsers": [],
+  "excludeUsers": []
+}

@@ -1,0 +1,31 @@
+# Acceptance and evidence boundaries
+
+No school-wide rollout is implied by building or deploying the server. Use synthetic fixtures until a restricted managed-Mac pilot is approved and tested.
+
+## Automated checks
+
+- Server build/type checks and pinned dependency audit.
+- Exact 32-byte credential vector, approved/unknown/conflicting enrollment, batch expiry, saved-credential recovery and revocation.
+- Device/admin separation, current admin permission, CSRF and unsafe production-default rejection.
+- Concurrent reservation/daily accounting, durable completion/deduplication, immutable metadata and no retention extension.
+- Corrupt hashes, sizes, wrapper/trailer, concatenated members, trailing payloads and excessive expansion rejected.
+- Exact application cutoff before physical deletion, cleanup references preserved when deletion fails.
+- Native macOS JSON, SQLite, stable descriptor snapshots, spaces, symlink/hard-link/FIFO rejection, gzip and plist checks.
+- Local API smoke and browser checks for fleet, pause/resume, collection requests, enrollment and live admin management.
+- A 1,000-device synthetic memory cohort verifies enrollment, reporting, and complete cursor pagination. It does not certify Cloud Run throughput, concurrent live uploads, or managed fleet capacity.
+
+## Real cloud checks
+
+Prove a private exact-length POST upload, effective create-only signer, overwrite/read denial, wrong-key and wrong-size rejection, accepted-generation byte-identical admin retrieval, repeat preparation with no additional object/quota charge, revoked completion denial, authenticated Scheduler operation, and accelerated expiry/cleanup using explicitly synthetic records.
+
+Emulators and local verification cannot establish these provider behaviors. A forged operator test session can exercise admin routes but does not establish a completed Google browser sign-in. Test actual Google login with an allowed admin and a nonadmin school account after configuring the web client.
+
+## Managed Mac pilot gates
+
+1. Five to ten Macs: actual Jamf install, enrollment, standard/logged-out/multiple users, permissions, macOS 13+ and current fleet versions, Intel/Apple silicon as present.
+2. Stable and changing log snapshots, lost upload/completion responses, reboot, offline retries, disk/staging caps, hostile path swaps against root-only/other-user files and bounded child termination.
+3. Daily catch-up, sleep/wake and battery/resource measurement; deferred request during a real AAC exam without settings changes.
+4. Update preserving credentials/pause/staging/ledger, failed-update recovery, offline/in-upload/partial/repeated uninstall, reboot absence and ordinary SEB exam launch afterward.
+5. Measured storage bytes, API reads/writes, CPU/memory, failures and download volume; then expand to 25–50, 250, and the remainder only after inspecting an actual exam and following daily collection.
+
+Custom directory support and device-specific limit overrides are not implemented in the initial collector. The standard directory and documented hard limits must match the pilot. Source logs are not authenticated evidence. Privacy/launchd/Jamf checks and the full architecture/version matrix must be reported as pending until actually run.

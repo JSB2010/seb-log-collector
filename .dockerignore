@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.env*
+.local
+infra/.terraform
+infra/*.tfstate*
+infra/*.tfvars
+tests
+test-results
+docs
+.DS_Store

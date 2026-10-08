@@ -1,0 +1,13 @@
+.gcloudignore
+.git
+.env*
+.local
+node_modules
+.next
+infra/.terraform
+infra/*.tfstate*
+infra/*.tfvars
+test-results
+playwright-report
+.DS_Store
+#!include:.gitignore
