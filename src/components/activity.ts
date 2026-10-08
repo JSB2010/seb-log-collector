@@ -1,0 +1,79 @@
+const words: Record<string, string> = {
+  on_demand: "Requested collection",
+  daily: "Daily collection",
+  initial: "First collection",
+  retry: "Upload retry",
+  completed: "Completed",
+  failed: "Failed",
+  running: "Running",
+  no_logs: "No logs found",
+  directory_missing: "Log directory missing",
+  unreadable: "Log access denied",
+  seb_absent: "Safe Exam Browser not installed",
+  logging_disabled: "Logging disabled",
+  deferred: "Deferred",
+  paused: "Paused",
+  blocked: "Blocked",
+  pending: "Waiting for check-in",
+  received: "Received by Mac",
+  cancelled: "Cancelled",
+  expired: "Expired",
+  read_denied: "File access denied",
+  unstable: "File changed during collection",
+  oversize: "File too large",
+  quota: "Upload limit reached",
+  transport: "Connection failed",
+  disk_pressure: "Not enough disk space",
+  staging_evicted: "Queued file expired",
+  auth: "Device authentication failed",
+  missing_tool: "Required macOS tool missing",
+  create_batch: "Enrollment created",
+  close_batch: "Enrollment closed",
+  reopen_batch: "Enrollment reopened",
+  update_batch: "Enrollment updated",
+  enroll: "Device enrolled",
+  revoke: "Device revoked",
+  request_collection: "Collection queued",
+  cancel_request: "Collection cancelled",
+  update_assignment: "Assignment updated",
+  download_enrollment_script: "Enrollment script downloaded",
+  refresh_enrollment_script: "Enrollment code refreshed",
+  download_management_script: "Management script downloaded",
+  grant_admin: "Administrator added",
+  remove_admin: "Administrator removed",
+  open: "Log opened",
+  download: "Log downloaded",
+  view_log: "Log details viewed",
+  preview: "Log previewed",
+  attach_session: "Session attached",
+  remove_session_link: "Session removed",
+  session_lookup: "Session lookup",
+  active: "Active",
+  accepted: "Accepted",
+  success: "Success",
+};
+export const humanize = (value?: string) =>
+  value ? (words[value] ?? value.replaceAll("_", " ")) : "—";
+export function collectionSummary(counts: Record<string, number> = {}) {
+  const labels: Record<string, string> = {
+    found: "found",
+    confirmed: "uploaded",
+    skipped: "already uploaded",
+    failed: "failed",
+  };
+  const parts = Object.entries(counts)
+    .filter(([, n]) => n > 0)
+    .sort(
+      ([a], [b]) =>
+        ["found", "confirmed", "skipped", "failed"].indexOf(a) -
+        ["found", "confirmed", "skipped", "failed"].indexOf(b),
+    )
+    .map(([k, n]) => `${n} ${labels[k] ?? humanize(k)}`);
+  return parts.join(" · ") || "No new uploads";
+}
+export const enrollmentState = (r: Record<string, any>) =>
+  r.state === "closed"
+    ? "Closed"
+    : Date.parse(r.expiresAt) <= Date.now()
+      ? "Expired"
+      : "Open";

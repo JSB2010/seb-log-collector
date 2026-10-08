@@ -183,19 +183,7 @@ const serials = [`SYNTHETIC-${tag}-A`, `SYNTHETIC-${tag}-B`];
 const batch = await api(
   "/api/admin/v1/enrollment-batches",
   "POST",
-  process.env.TEST_JAMF_MODE === "1"
-    ? {
-        mode: "jamf",
-        label: "Synthetic cloud acceptance fixture",
-        ceiling: 2,
-        days: 1,
-      }
-    : {
-        roster: serials.map((serial) => ({
-          serial,
-          assignedLabel: "Synthetic cloud acceptance fixture",
-        })),
-      },
+  { label: "Synthetic cloud acceptance fixture", ceiling: 2, days: 1 },
   adminHeaders,
   201,
 );
@@ -209,12 +197,45 @@ if (process.env.TEST_JAMF_MODE === "1") {
     hash(Buffer.from(await response.text())),
     hash(await readFile("public/collector/install.zsh")),
   );
-  assert.equal(batch.mode, "jamf");
+  assert.equal((await doc(`enrollmentBatches/${batch.id}`)).mode, "automatic");
   assert.equal(batch.origin, origin);
   ok(
     "Deployed embedded installer matches the checked release; canonical-origin automatic batch configured",
   );
 }
+const scriptPath = `/api/admin/v1/enrollment-batches/${batch.id}/installer`;
+const fetchInstaller = async () => {
+  const r = await fetch(origin + scriptPath, {
+    method: "POST",
+    headers: adminHeaders,
+  });
+  assert.equal(r.status, 200);
+  return r.text();
+};
+const installerFirst = await fetchInstaller(),
+  installerSecond = await fetchInstaller();
+assert.equal(installerFirst, installerSecond);
+assert.ok(
+  installerFirst.includes(batch.code) && !installerFirst.includes("base64 -D"),
+);
+await api(`/api/admin/v1/enrollment-batches/${batch.id}`, "PATCH", {
+  state: "closed",
+});
+await api(`/api/admin/v1/enrollment-batches/${batch.id}`, "PATCH", {
+  state: "open",
+  days: 1,
+});
+assert.equal(await fetchInstaller(), installerFirst);
+for (const action of ["update", "uninstall", "collect", "pause", "resume"]) {
+  const r = await fetch(`${origin}/api/admin/v1/scripts/${action}`, {
+    headers: adminHeaders,
+  });
+  assert.equal(r.status, 200);
+  assert.ok((await r.text()).startsWith("#!/bin/zsh -f"));
+}
+ok(
+  "Reusable readable enrollment installer, close/reopen, and authenticated Jamf management scripts",
+);
 const metadata = {
   collectorVersion: "0.1.0",
   architecture: "arm64",
@@ -269,7 +290,9 @@ if (process.env.TEST_JAMF_MODE === "1") {
     "Automatic Jamf enrollment without a serial roster; device ceiling enforced",
   );
 }
-ok("Roster enrollment, response reconciliation, and device/admin separation");
+ok(
+  "Automatic enrollment, response reconciliation, and device/admin separation",
+);
 const d = devices[0],
   collectionId = randomUUID(),
   raw = Buffer.from(
@@ -434,6 +457,25 @@ assert.equal(downloaded.status, 200);
 const received = Buffer.from(await downloaded.arrayBuffer());
 assert.deepEqual(received, gz);
 assert.deepEqual(gunzipSync(received), raw);
+const opened = await fetch(
+  `${origin}/api/admin/v1/logs/${policy.uploadId}/open`,
+  { headers: adminHeaders },
+);
+assert.equal(opened.status, 200);
+assert.equal(opened.headers.get("content-type"), "text/plain; charset=utf-8");
+assert.ok(opened.headers.get("content-disposition").startsWith("inline;"));
+assert.ok(opened.headers.get("content-security-policy").includes("sandbox"));
+assert.deepEqual(Buffer.from(await opened.arrayBuffer()), raw);
+await api(
+  `/api/admin/v1/logs/${policy.uploadId}/open`,
+  "GET",
+  undefined,
+  d.auth,
+  401,
+);
+ok(
+  "Verified inline plain-text log opening, byte equality, and device-token denial",
+);
 const preview = await api(`/api/admin/v1/logs/${policy.uploadId}/preview`);
 assert.ok(preview.text.includes("<script>never execute</script>"));
 ok("Byte-identical authorized gzip download and bounded inert text preview");

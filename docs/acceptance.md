@@ -5,7 +5,7 @@ No school-wide rollout is implied by building or deploying the server. Use synth
 ## Automated checks
 
 - Server build/type checks and pinned dependency audit.
-- Exact 32-byte credential vector, approved/unknown/conflicting enrollment, batch expiry, saved-credential recovery and revocation.
+- Exact 32-byte credential vector, automatic/conflicting enrollment, batch expiry, saved-credential recovery and revocation.
 - Device/admin separation, current admin permission, CSRF and unsafe production-default rejection.
 - Automatic Jamf-group acceptance without a serial roster, concurrent enrollment ceiling, closed/expired bootstrap denial, deterministic combined installer and bounded offline enrollment retry.
 - Concurrent reservation/daily accounting, durable completion/deduplication, immutable metadata and no retention extension.
@@ -13,6 +13,8 @@ No school-wide rollout is implied by building or deploying the server. Use synth
 - Exact application cutoff before physical deletion, cleanup references preserved when deletion fails.
 - Native macOS JSON, SQLite, stable descriptor snapshots, spaces, symlink/hard-link/FIFO rejection, gzip and plist checks.
 - Native snapshot-to-acknowledgment collection with apostrophes, backslashes, Unicode and SQL-like metadata; orphan recovery/expiry, payload preservation on ledger write failure, safe error output and confirmed-source deduplication.
+- Repeated installer retrieval, encrypted bootstrap omission from lists, legacy one-time rotation, reopen preserving credentials/counts, and descending cursor pagination with timestamp ties.
+- Readable native lifecycle fixtures: offline repair, equal-version update, downgrade rejection, manifest/path/hash rejection, verified update, preserved state, and removal; network/launchd/process controls are mocked in this fixture.
 - Local API smoke and browser checks for fleet, pause/resume, collection requests, enrollment and live admin management.
 - A 1,000-device synthetic memory cohort verifies enrollment, reporting, and complete cursor pagination. It does not certify Cloud Run throughput, concurrent live uploads, or managed fleet capacity.
 

@@ -1,4 +1,4 @@
-// Generic embedded installer; only an authenticated admin receives the batch code.
+// Readable self-contained installer; batch credentials are inserted server-side.
 export function enrollmentInstaller(
   source: string,
   code: string,
@@ -20,6 +20,6 @@ export function enrollmentInstaller(
     .replace(marker, `API_ORIGIN='${origin}'`)
     .replace(
       start,
-      `# Restricted Jamf scope; close the batch after successful enrollment.\nif ! print -rn -- '${code}' | /bin/zsh -f "$ROOT/bin/soe-diagnostics" enroll --bootstrap-stdin; then\n  ${start}\n  print -u2 'Enrollment pending; the daemon retries within the enrollment window.'\n  exit 1\nfi\n${start}`,
+      `# BEGIN ENROLLMENT BOOTSTRAP\n# Deliver only to the intended devices. Closing the enrollment disables new registrations.\nif ! print -rn -- '${code}' | /bin/zsh -f "$ROOT/bin/soe-diagnostics" enroll --bootstrap-stdin; then\n  ${start}\n  print -u2 'Enrollment pending; the daemon retries within the enrollment window.'\n  exit 1\nfi\n# END ENROLLMENT BOOTSTRAP\n${start}`,
     );
 }

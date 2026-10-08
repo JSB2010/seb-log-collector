@@ -25,7 +25,7 @@ jobs:
       - run: npm run release:collector
       - name: zsh syntax and native tools
         run: |
-          for f in collector/soe-diagnostics collector/read-source collector/lib/*.zsh jamf/*.zsh jamf/releases/*.zsh; do /bin/zsh -n "$f"; done
+          for f in collector/soe-diagnostics collector/read-source collector/manage.zsh collector/lib/*.zsh jamf/*.zsh jamf/releases/*.zsh public/collector/*.zsh; do /bin/zsh -n "$f"; done
           node tests/macos-executables.mjs
           node tests/macos-installer.mjs
           /bin/zsh -f tests/macos-tools.zsh

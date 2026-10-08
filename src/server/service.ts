@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { config } from "./config";
 import { store, pageCursor, type Doc, type Store, type Tx } from "./store";
-import { sha, equal, secret } from "./crypto";
+import { sha, equal, secret, sealBootstrap, openBootstrap } from "./crypto";
 import { ApiError, requireThat } from "./errors";
 import * as schema from "./schema";
 import {
@@ -80,12 +80,13 @@ export class Service {
   ) {}
   async enroll(code: string, input: unknown) {
     const b = schema.enrollment.parse(input),
-      batchId = sha(code),
+      codeHash = sha(code),
       deviceId = sha(b.serial).slice(0, 32);
     requireThat(/^[A-Za-z0-9_-]{43}$/.test(code), 401, "invalid_bootstrap");
     return this.db.transaction(async (tx) => {
+      const index = await tx.get(`enrollmentTokens/${codeHash}`);
+      const batchId = index?.batchId ?? codeHash;
       const batch = await tx.get(`enrollmentBatches/${batchId}`),
-        roster = await tx.get(`enrollmentRoster/${batchId}-${sha(b.serial)}`),
         old = await tx.get(`installations/${b.installationId}`),
         d = await tx.get(`devices/${deviceId}`);
       if (old) {
@@ -100,12 +101,13 @@ export class Service {
         return { deviceId, schemaVersion: 1 };
       }
       requireThat(
-        batch && batch.state === "open" && alive(batch),
+        batch &&
+          batch.bootstrapHash === codeHash &&
+          batch.state === "open" &&
+          alive(batch),
         403,
         "bootstrap_closed",
       );
-      requireThat(batch.mode === "jamf" || roster, 403, "serial_not_approved");
-      requireThat(!roster?.installationId, 409, "serial_already_claimed");
       requireThat(batch.count < batch.ceiling, 429, "batch_limit");
       requireThat(!d?.activeInstallation, 409, "enrollment_conflict");
       tx.set(`installations/${b.installationId}`, {
@@ -119,9 +121,9 @@ export class Service {
         ...d,
         id: deviceId,
         serial: b.serial,
-        assignedLabel: roster?.assignedLabel ?? batch.label ?? "",
-        schoolEmail: roster?.schoolEmail ?? "",
-        jamfId: roster?.jamfId ?? "",
+        assignedLabel: batch.label ?? "",
+        schoolEmail: d?.schoolEmail ?? "",
+        jamfId: d?.jamfId ?? "",
         enrollmentBatchId: batchId,
         activeInstallation: b.installationId,
         state: "active",
@@ -133,18 +135,11 @@ export class Service {
         metadata: b.metadata,
         searchTokens: searchTokens(
           b.serial,
-          roster?.assignedLabel ?? batch.label ?? "",
-          roster?.schoolEmail ?? "",
+          batch.label ?? "",
+          d?.schoolEmail ?? "",
           b.metadata.hostName,
         ),
       });
-      if (roster)
-        tx.set(`enrollmentRoster/${roster.id}`, {
-          ...roster,
-          installationId: b.installationId,
-          deviceId,
-          claimedAt: now(),
-        });
       tx.set(`enrollmentBatches/${batchId}`, {
         ...batch,
         count: batch.count + 1,
@@ -529,59 +524,118 @@ export class Service {
   async createBatch(a: Actor, input: unknown) {
     const b = schema.batch.parse(input),
       code = secret(),
-      id = sha(code);
-    if (b.mode === "roster")
-      requireThat(
-        new Set(b.roster.map((r) => r.serial)).size === b.roster.length,
-        400,
-        "duplicate_serial",
-      );
-    const expiresAt = expiry(b.days);
-    const ceiling = b.mode === "jamf" ? b.ceiling : b.roster.length;
+      id = sha(code),
+      expiresAt = expiry(b.days);
     await this.db.transaction(async (tx) => {
       tx.set(`enrollmentBatches/${id}`, {
         id,
         bootstrapHash: id,
+        encryptedBootstrap: sealBootstrap(code),
         expiresAt,
         createdAt: now(),
         creator: a.email,
-        mode: b.mode,
-        label: b.mode === "jamf" ? b.label : "",
-        ceiling,
+        mode: "automatic",
+        label: b.label,
+        ceiling: b.ceiling,
         count: 0,
         state: "open",
         ttlAt: new Date(expiry(90)),
       });
-      for (const r of b.mode === "roster" ? b.roster : []) {
-        const rid = `${id}-${sha(r.serial)}`;
-        tx.set(`enrollmentRoster/${rid}`, {
-          ...r,
-          id: rid,
-          batchId: id,
-          installationId: null,
-          expiresAt: expiry(90),
-          ttlAt: new Date(expiry(90)),
-        });
-      }
       audit(tx, a.email, "create_batch", id);
     });
     return {
       id,
       code,
       expiresAt,
-      ceiling,
-      mode: b.mode,
+      ceiling: b.ceiling,
       origin: config().PUBLIC_ORIGIN,
     };
+  }
+  async updateBatch(a: Actor, id: string, input: unknown) {
+    const b = schema.batchUpdate.parse(input);
+    return this.db.transaction(async (tx) => {
+      const batch = await tx.get(`enrollmentBatches/${id}`);
+      requireThat(batch, 404, "batch_not_found");
+      requireThat(
+        (b.ceiling ?? batch.ceiling) >= batch.count,
+        400,
+        "limit_below_enrolled_count",
+      );
+      const reopened = b.state === "open";
+      tx.set(`enrollmentBatches/${id}`, {
+        ...batch,
+        ...(b.label !== undefined ? { label: b.label } : {}),
+        ...(b.ceiling !== undefined ? { ceiling: b.ceiling } : {}),
+        ...(b.state ? { state: b.state } : {}),
+        mode: "automatic",
+        ...(reopened || b.days
+          ? { expiresAt: expiry(b.days ?? 7), ttlAt: new Date(expiry(90)) }
+          : {}),
+        updatedAt: now(),
+      });
+      if ((reopened || b.days) && batch.bootstrapHash !== id)
+        tx.set(`enrollmentTokens/${batch.bootstrapHash}`, {
+          id: batch.bootstrapHash,
+          batchId: id,
+          ttlAt: new Date(expiry(90)),
+        });
+      audit(
+        tx,
+        a.email,
+        reopened
+          ? "reopen_batch"
+          : b.state === "closed"
+            ? "close_batch"
+            : "update_batch",
+        id,
+      );
+      return { updated: true };
+    });
+  }
+  async batchInstaller(a: Actor, id: string) {
+    return this.db.transaction(async (tx) => {
+      const batch = await tx.get(`enrollmentBatches/${id}`);
+      requireThat(batch, 404, "batch_not_found");
+      let code: string;
+      if (batch.encryptedBootstrap)
+        code = openBootstrap(batch.encryptedBootstrap);
+      else {
+        // Older releases stored only a hash. Rotate once, preserving the batch,
+        // its enrolled devices and its ceiling; old copies then require a download.
+        code = secret();
+        const hash = sha(code);
+        tx.set(`enrollmentTokens/${hash}`, {
+          id: hash,
+          batchId: id,
+          ttlAt: new Date(expiry(90)),
+        });
+        tx.set(`enrollmentBatches/${id}`, {
+          ...batch,
+          bootstrapHash: hash,
+          encryptedBootstrap: sealBootstrap(code),
+          mode: "automatic",
+          updatedAt: now(),
+        });
+        audit(tx, a.email, "refresh_enrollment_script", id);
+      }
+      audit(tx, a.email, "download_enrollment_script", id);
+      return { code, origin: config().PUBLIC_ORIGIN };
+    });
   }
   async list(kind: string, url: URL) {
     const f: [string, string, unknown][] = [],
       order =
-        kind === "logs"
-          ? "acceptedAt"
-          : kind === "devices" && url.searchParams.has("lastContact")
-            ? "lastSeenAt"
-            : "id";
+        (
+          {
+            logs: "acceptedAt",
+            devices: "lastSeenAt",
+            collections: "receivedAt",
+            collectionRequests: "createdAt",
+            auditEvents: "createdAt",
+            enrollmentBatches: "createdAt",
+            admins: "createdAt",
+          } as Record<string, string>
+        )[kind] ?? "id";
     if (kind === "devices") {
       const range = url.searchParams.get("lastContact");
       if (range === "recent") f.push(["lastSeenAt", ">=", expiry(-1)]);
@@ -604,18 +658,20 @@ export class Service {
             ["instance", "==", instance],
             ["session", "==", session],
           ],
-          "id",
+          "acceptedAt",
           url.searchParams.get("cursor") ?? undefined,
           50,
+          "desc",
         ),
         items = [];
       for (const link of links) {
         const l = await this.db.get(`logs/${link.logId}`);
-        if (alive(link) && alive(l)) items.push(l);
+        if (alive(link) && l && alive(l)) items.push(l);
       }
       return {
         items,
-        nextCursor: links.length === 50 ? pageCursor(links.at(-1), "id") : null,
+        nextCursor:
+          links.length === 50 ? pageCursor(links.at(-1), "acceptedAt") : null,
       };
     }
     const query = url.searchParams.get("q");
@@ -651,14 +707,80 @@ export class Service {
     }
     const cursor = url.searchParams.get("cursor") ?? undefined;
     if (cursor) requireThat(cursor.length < 2048, 400, "invalid_cursor");
-    const rows = await this.db.query(kind, f, order, cursor, 50);
+    const rows = await this.db.query(kind, f, order, cursor, 50, "desc");
+    const items = rows
+      .filter(
+        (r) =>
+          ["enrollmentBatches", "collectionRequests"].includes(kind) ||
+          !r.expiresAt ||
+          alive(r),
+      )
+      .map(({ credentialHash, bootstrapHash, encryptedBootstrap, ...r }) => r);
+    // Resolve only the visible page; memoize shared targets and fetch in parallel.
+    const labels = new Map<string, Promise<string | undefined>>();
+    const label = (path: string) => {
+      if (!labels.has(path))
+        labels.set(
+          path,
+          this.db
+            .get(path)
+            .then(
+              (d) =>
+                d?.metadata?.computerName ||
+                d?.metadata?.hostName ||
+                d?.source?.basename ||
+                d?.label ||
+                d?.email ||
+                d?.serial,
+            ),
+        );
+      return labels.get(path)!;
+    };
+    if (kind === "collectionRequests")
+      await Promise.all(
+        items.map(async (r) => {
+          r.deviceLabel = await label(`devices/${r.deviceId}`);
+          if (
+            ["pending", "delivered", "accepted"].includes(r.state) &&
+            !alive(r)
+          )
+            r.state = "expired";
+        }),
+      );
+    if (kind === "auditEvents")
+      await Promise.all(
+        items.map(async (r) => {
+          const collection = /batch|enrollment_script/.test(r.action)
+            ? "enrollmentBatches"
+            : /log|session_link/.test(r.action) ||
+                ["open", "download", "preview", "attach_session"].includes(
+                  r.action,
+                )
+              ? "logs"
+              : /admin/.test(r.action)
+                ? "admins"
+                : r.action === "cancel_request"
+                  ? "collectionRequests"
+                  : [
+                        "enroll",
+                        "revoke",
+                        "active",
+                        "paused",
+                        "update_assignment",
+                        "request_collection",
+                      ].includes(r.action)
+                    ? "devices"
+                    : undefined;
+          if (collection)
+            r.targetLabel = await label(`${collection}/${r.target}`);
+        }),
+      );
     return {
-      items: rows
-        .filter((r) => !r.expiresAt || alive(r))
-        .map(({ credentialHash, bootstrapHash, ...r }) => r),
+      items,
       nextCursor: rows.length === 50 ? pageCursor(rows.at(-1), order) : null,
     };
   }
+
   async log(id: string) {
     const l = await this.db.get(`logs/${id}`);
     requireThat(l, 404, "log_not_found");

@@ -1,7 +1,7 @@
 import { Storage } from "@google-cloud/storage";
 import { GoogleAuth } from "google-auth-library";
 import { createHash } from "node:crypto";
-import { createInflateRaw, crc32 } from "node:zlib";
+import { createInflateRaw, createGunzip, crc32 } from "node:zlib";
 import { Readable } from "node:stream";
 import { config } from "./config";
 import { ApiError, requireThat } from "./errors";
@@ -219,4 +219,22 @@ export function download(u: Doc) {
   return Readable.toWeb(
     object(u.objectKey, u.generation).createReadStream(),
   ) as ReadableStream<Uint8Array>;
+}
+// The caller verifies this immutable generation first. Streaming avoids buffering
+// up to 64 MiB per viewer, while cancellation releases both underlying streams.
+export function logText(u: Doc) {
+  const input = object(u.objectKey, u.generation).createReadStream();
+  const output = createGunzip();
+  input.on("error", (e) => output.destroy(e));
+  const timer = setTimeout(
+    () => output.destroy(new ApiError(503, "read_timeout")),
+    45000,
+  );
+  timer.unref();
+  output.on("close", () => {
+    clearTimeout(timer);
+    input.destroy();
+  });
+  input.pipe(output);
+  return Readable.toWeb(output) as ReadableStream<Uint8Array>;
 }

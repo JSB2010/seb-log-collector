@@ -15,7 +15,7 @@ import {
 import { MemoryStore } from "../src/server/store";
 import { Service } from "../src/server/service";
 import { verifyGzip } from "../src/server/storage";
-import { parseRoster, csvCell } from "../src/components/csv";
+import { csvCell } from "../src/components/csv";
 import { enrollmentInstaller } from "../src/components/enrollment";
 const metadata = {
   collectorVersion: "0.1.0",
@@ -53,7 +53,7 @@ beforeEach(async () => {
   s = new Service(db, provider);
   install = randomUUID();
   rawSecret = secret();
-  batch = await s.createBatch(actor, { roster: [{ serial: "SYNTHETIC001" }] });
+  batch = await s.createBatch(actor, { label: "Synthetic fixture" });
   await s.enroll(batch.code, {
     schemaVersion: 1,
     installationId: install,
@@ -191,7 +191,7 @@ describe("Enrollment and permissions", () => {
     );
     expect(() => credentialHash("x".repeat(44))).toThrow();
   });
-  it("reconciles the same enrollment, denies a conflicting install and unknown serial", async () => {
+  it("reconciles the same enrollment, denies a conflicting install and accepts another serial", async () => {
     const b = {
       schemaVersion: 1,
       installationId: install,
@@ -203,13 +203,15 @@ describe("Enrollment and permissions", () => {
     await expect(
       s.enroll(batch.code, { ...b, installationId: randomUUID() }),
     ).rejects.toMatchObject({ status: 409 });
-    await expect(
-      s.enroll(batch.code, {
-        ...b,
-        installationId: randomUUID(),
-        serial: "UNKNOWN001",
-      }),
-    ).rejects.toMatchObject({ status: 403 });
+    expect(
+      (
+        await s.enroll(batch.code, {
+          ...b,
+          installationId: randomUUID(),
+          serial: "UNKNOWN001",
+        })
+      ).deviceId,
+    ).not.toBe(d.id);
   });
   it("allows saved credentials after batch expiry but rejects new enrollment", async () => {
     await db.transaction(async (t) => {
@@ -221,7 +223,7 @@ describe("Enrollment and permissions", () => {
     });
     expect((await device(req(), db)).id).toBe(d.id);
     const next = await s.createBatch(actor, {
-      roster: [{ serial: "SYNTHETIC002" }],
+      label: "Synthetic replacement",
     });
     await db.transaction(async (t) => {
       const b = await t.get(`enrollmentBatches/${next.id}`);
@@ -449,11 +451,144 @@ describe("Untrusted gzip and CSV", () => {
     await expect(verify(bad, raw)).rejects.toThrow();
     await expect(verify(gz, Buffer.from("x"))).rejects.toThrow();
   });
-  it("parses quoted CSV and prevents spreadsheet formula injection", () => {
-    expect(
-      parseRoster('serial,assignedLabel\r\nSYNTHETIC001,"Example, Mac"\r\n')[0]
-        .assignedLabel,
-    ).toBe("Example, Mac");
+  it("prevents spreadsheet formula injection", () => {
     expect(csvCell("=CMD()")).toBe('"\'=CMD()"');
+  });
+});
+
+describe("Reusable enrollment and chronological history", () => {
+  it("retrieves the same encrypted bootstrap repeatedly, reopens without resetting devices, and hides credentials in lists", async () => {
+    const [first, second] = await Promise.all([
+      s.batchInstaller(actor, batch.id),
+      s.batchInstaller(actor, batch.id),
+    ]);
+    expect(first.code).toBe(batch.code);
+    expect(second.code).toBe(first.code);
+    const stored = await db.get(`enrollmentBatches/${batch.id}`);
+    expect(stored?.encryptedBootstrap).not.toContain(first.code);
+    await s.updateBatch(actor, batch.id, { state: "closed" });
+    await expect(
+      s.enroll(first.code, {
+        schemaVersion: 1,
+        installationId: randomUUID(),
+        serial: "SECOND",
+        credentialHash: credentialHash(secret()),
+        metadata,
+      }),
+    ).rejects.toMatchObject({ code: "bootstrap_closed" });
+    await s.updateBatch(actor, batch.id, {
+      state: "open",
+      label: "Reopened",
+      days: 3,
+    });
+    expect((await db.get(`enrollmentBatches/${batch.id}`))?.count).toBe(1);
+    expect((await s.batchInstaller(actor, batch.id)).code).toBe(first.code);
+    expect((await device(req(), db)).id).toBe(d.id);
+    const list = await s.list(
+      "enrollmentBatches",
+      new URL("https://diagnostics.example.org"),
+    );
+    expect(list.items[0]).not.toHaveProperty("encryptedBootstrap");
+    expect(list.items[0]).not.toHaveProperty("bootstrapHash");
+    expect(JSON.stringify(list)).not.toContain(first.code);
+    await expect(
+      s.createBatch(actor, { roster: [{ serial: "SECOND" }] }),
+    ).rejects.toThrow();
+    await expect(
+      s.updateBatch(actor, batch.id, { ceiling: 0 }),
+    ).rejects.toThrow();
+  });
+  it("rotates a legacy hash-only bootstrap once, serializes concurrent downloads, and retains existing credentials", async () => {
+    await db.transaction(async (tx) => {
+      const { encryptedBootstrap, ...old } = (await tx.get(
+        `enrollmentBatches/${batch.id}`,
+      ))!;
+      tx.set(`enrollmentBatches/${batch.id}`, old);
+    });
+    const downloads = await Promise.all(
+      Array.from({ length: 4 }, () => s.batchInstaller(actor, batch.id)),
+    );
+    expect(new Set(downloads.map((v) => v.code)).size).toBe(1);
+    expect(downloads[0].code).not.toBe(batch.code);
+    const input = {
+      schemaVersion: 1,
+      installationId: randomUUID(),
+      serial: "LEGACY-SECOND",
+      credentialHash: credentialHash(secret()),
+      metadata,
+    };
+    await expect(s.enroll(batch.code, input)).rejects.toMatchObject({
+      code: "bootstrap_closed",
+    });
+    await expect(s.enroll(downloads[0].code, input)).resolves.toHaveProperty(
+      "deviceId",
+    );
+    expect((await device(req(), db)).id).toBe(d.id);
+    expect((await db.get(`enrollmentBatches/${batch.id}`))?.count).toBe(2);
+  });
+  it("orders every history before pagination and handles equal timestamps without omissions or duplicates", async () => {
+    for (const [kind, field] of Object.entries({
+      devices: "lastSeenAt",
+      logs: "acceptedAt",
+      collections: "receivedAt",
+      collectionRequests: "createdAt",
+      auditEvents: "createdAt",
+      enrollmentBatches: "createdAt",
+    })) {
+      db.docs.clear();
+      const expected = Array.from({ length: 121 }, (_, i) => ({
+        id: String(i).padStart(3, "0"),
+        [field]: new Date(Date.now() - Math.floor(i / 3) * 60000).toISOString(),
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+      }));
+      for (const row of expected) db.docs.set(`${kind}/${row.id}`, row);
+      const ordered = [...expected].sort(
+        (a, b) =>
+          String(b[field]).localeCompare(String(a[field])) ||
+          b.id.localeCompare(a.id),
+      );
+      const result = [];
+      let cursor: string | null = null;
+      do {
+        const url = new URL("https://diagnostics.example.org");
+        if (cursor) url.searchParams.set("cursor", cursor);
+        const page = await s.list(kind, url);
+        result.push(...page.items.map((v) => v.id));
+        cursor = page.nextCursor;
+      } while (cursor);
+      expect(result, kind).toEqual(ordered.map((v) => v.id));
+    }
+  });
+  it("keeps expired enrollments and request history visible while showing the request deadline honestly", async () => {
+    db.docs.set("collectionRequests/old", {
+      id: "old",
+      deviceId: d.id,
+      state: "pending",
+      createdAt: metadata.reportedAt,
+      expiresAt: "2020-01-01T00:00:00.000Z",
+    });
+    const result = await s.list(
+      "collectionRequests",
+      new URL("https://diagnostics.example.org"),
+    );
+    expect(result.items[0]).toMatchObject({
+      state: "expired",
+      deviceLabel: "synthetic",
+    });
+    await db.transaction(async (tx) => {
+      const row = await tx.get(`enrollmentBatches/${batch.id}`);
+      tx.set(`enrollmentBatches/${batch.id}`, {
+        ...row,
+        expiresAt: "2020-01-01T00:00:00.000Z",
+      });
+    });
+    expect(
+      (
+        await s.list(
+          "enrollmentBatches",
+          new URL("https://diagnostics.example.org"),
+        )
+      ).items,
+    ).toHaveLength(1);
   });
 });

@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { enrollmentInstaller } from "../components/enrollment";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { config } from "./config";
@@ -14,8 +17,16 @@ import { store, type Doc } from "./store";
 import { Service, audit, now, expiry, alive, searchTokens } from "./service";
 import { ApiError, requireThat } from "./errors";
 import { sha, equal } from "./crypto";
-import { object, verifyGzip, download } from "./storage";
+import { object, verifyGzip, download, logText } from "./storage";
 import * as schema from "./schema";
+const scriptResponse = (source: string, name: string) =>
+  new Response(source, {
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "content-disposition": `attachment; filename="${name}"`,
+      "cache-control": "no-store",
+    },
+  });
 const json = (v: unknown, status = 200) =>
   Response.json(v, { status, headers: { "cache-control": "no-store" } });
 async function body(req: Request) {
@@ -162,7 +173,7 @@ export async function route(req: Request) {
               uploadedAt: log!.uploadedAt,
               expiresAt: log!.expiresAt,
               method: l.method,
-              adminUrl: `${c.PUBLIC_ORIGIN}/?view=logs&log=${log!.id}`,
+              adminUrl: `${c.PUBLIC_ORIGIN}/logs?selected=${log!.id}`,
             });
         }
       await db.transaction(async (tx) =>
@@ -215,6 +226,7 @@ export async function route(req: Request) {
             "receivedAt",
             undefined,
             50,
+            "desc",
           ),
           db.query(
             "logs",
@@ -222,13 +234,15 @@ export async function route(req: Request) {
             "acceptedAt",
             undefined,
             50,
+            "desc",
           ),
           db.query(
             "collectionRequests",
             [["deviceId", "==", id]],
-            "id",
+            "createdAt",
             undefined,
             50,
+            "desc",
           ),
         ]);
         out = json({
@@ -237,6 +251,23 @@ export async function route(req: Request) {
           logs: logs.filter(alive),
           requests: requests.filter(alive),
         });
+      } else if (resource === "scripts" && id && req.method === "GET") {
+        const names: Record<string, string> = {
+          update: "update.zsh",
+          uninstall: "uninstall.zsh",
+          collect: "collect-now.zsh",
+          pause: "pause.zsh",
+          resume: "resume.zsh",
+        };
+        requireThat(names[id], 404, "script_not_found");
+        const source = await readFile(
+          join(process.cwd(), "public/collector", names[id]),
+          "utf8",
+        );
+        await db.transaction(async (tx) =>
+          audit(tx, a.email, "download_management_script", id),
+        );
+        out = scriptResponse(source, `safe-online-exam-logs-${id}.zsh`);
       } else if (resource === "logs" && id) {
         const l = await s.log(id);
         await db.transaction(async (tx) =>
@@ -249,6 +280,23 @@ export async function route(req: Request) {
           );
           await s.log(id);
           out = json(result);
+        } else if (req.method === "GET" && action === "open") {
+          await verifyGzip(
+            object(l.objectKey, l.generation).createReadStream(),
+            l,
+            0,
+          );
+          await s.log(id);
+          out = new Response(logText(l), {
+            headers: {
+              "content-type": "text/plain; charset=utf-8",
+              "content-disposition": `inline; filename="${id}.log"`,
+              "cache-control": "no-store",
+              "x-content-type-options": "nosniff",
+              "content-security-policy":
+                "default-src 'none'; sandbox; frame-ancestors 'none'",
+            },
+          });
         } else if (req.method === "GET" && action === "download")
           out = new Response(download(l), {
             headers: {
@@ -340,55 +388,33 @@ export async function route(req: Request) {
           audit(tx, a.email, "cancel_request", id);
         });
         out = json({ cancelled: true });
-      } else if (resource === "enrollment-batches" && req.method === "POST")
+      } else if (
+        resource === "enrollment-batches" &&
+        !id &&
+        req.method === "POST"
+      )
         out = json(await s.createBatch(a, await body(req)), 201);
       else if (
         resource === "enrollment-batches" &&
         id &&
         req.method === "PATCH"
-      ) {
-        const b = z
-          .object({ state: z.literal("closed") })
-          .strict()
-          .parse(await body(req));
-        await db.transaction(async (tx) => {
-          const batch = await tx.get(`enrollmentBatches/${id}`);
-          requireThat(batch, 404, "batch_not_found");
-          tx.set(`enrollmentBatches/${id}`, { ...batch, ...b });
-          audit(tx, a.email, "close_batch", id);
-        });
-        out = json({ closed: true });
-      } else if (
+      )
+        out = json(await s.updateBatch(a, id, await body(req)));
+      else if (
         resource === "enrollment-batches" &&
-        action === "reset" &&
+        id &&
+        action === "installer" &&
         req.method === "POST"
       ) {
-        const b = z
-          .object({ serial: schema.serial })
-          .strict()
-          .parse(await body(req));
-        const rid = `${id}-${sha(b.serial)}`;
-        await db.transaction(async (tx) => {
-          const r = await tx.get(`enrollmentRoster/${rid}`);
-          requireThat(r, 404, "roster_not_found");
-          const d = r.deviceId
-            ? await tx.get(`devices/${r.deviceId}`)
-            : undefined;
-          requireThat(!d?.activeInstallation, 409, "revoke_before_reset");
-          const batch = await tx.get(`enrollmentBatches/${id}`);
-          requireThat(batch, 404, "batch_not_found");
-          tx.set(`enrollmentRoster/${rid}`, {
-            ...r,
-            installationId: null,
-            resetAt: now(),
-          });
-          tx.set(`enrollmentBatches/${id}`, {
-            ...batch,
-            count: Math.max(0, batch.count - 1),
-          });
-          audit(tx, a.email, "reset_roster_serial", rid);
-        });
-        out = json({ reset: true });
+        const credentials = await s.batchInstaller(a, id);
+        const source = await readFile(
+          join(process.cwd(), "public/collector/install.zsh"),
+          "utf8",
+        );
+        out = scriptResponse(
+          enrollmentInstaller(source, credentials.code, credentials.origin),
+          "safe-online-exam-logs-install-and-enroll.zsh",
+        );
       } else if (resource === "admins" && req.method === "POST") {
         await seedAdmins(db);
         const b = z
@@ -444,6 +470,7 @@ export async function route(req: Request) {
               ...b,
               id: lid,
               method: "manual",
+              acceptedAt: l.acceptedAt,
               creator: a.email,
               createdAt: now(),
               expiresAt: l.expiresAt,
@@ -463,7 +490,10 @@ export async function route(req: Request) {
             await db.query(
               "sessionLinks",
               [["logId", "==", validId(url.searchParams.get("logId") ?? "")]],
-              "id",
+              "createdAt",
+              undefined,
+              50,
+              "desc",
             )
           ).filter(alive),
         });

@@ -33,6 +33,7 @@ for native_tool in /bin/cat /bin/chmod /bin/cp /bin/date /bin/dd /bin/df /bin/ki
   [[ -x $native_tool ]] || { print -u2 "Missing required native tool: $native_tool"; exit 1; }
 done
 
+[[ -f "$ROOT/config.json" ]] || { print 'No installed collector to update'; exit 0; }
 # Set API_ORIGIN in your IT-controlled copy. Updates preserve existing configuration.
 API_ORIGIN=${API_ORIGIN:-}
 if [[ ! -f "$ROOT/config.json" ]]; then

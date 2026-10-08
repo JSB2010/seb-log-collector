@@ -5,6 +5,7 @@ import { config } from "./config";
 import { store, type Store, type Doc } from "./store";
 import { credentialHash, equal, sha, secret } from "./crypto";
 import { ApiError, requireThat } from "./errors";
+import { safeReturnTo } from "../components/navigation";
 export type Actor = { email: string; sub: string; csrf: string };
 const key = () => new TextEncoder().encode(config().SESSION_SECRET);
 export function cookies(req: Request) {
@@ -179,7 +180,16 @@ export async function oauth(req: Request, path: string) {
     const state = secret(),
       nonce = secret(),
       verifier = secret();
-    const flow = await token({ state, nonce, verifier }, "oauth", 600);
+    const flow = await token(
+      {
+        state,
+        nonce,
+        verifier,
+        returnTo: safeReturnTo(url.searchParams.get("returnTo")),
+      },
+      "oauth",
+      600,
+    );
     const target = client.generateAuthUrl({
       access_type: "online",
       scope: ["openid", "email", "profile"],
@@ -237,7 +247,9 @@ export async function oauth(req: Request, path: string) {
   });
   const csrf = secret(),
     session = await token({ email, sub: p.sub, csrf }, "session");
-  const headers = new Headers({ location: c.PUBLIC_ORIGIN });
+  const headers = new Headers({
+    location: c.PUBLIC_ORIGIN + safeReturnTo(flow.returnTo),
+  });
   headers.append("set-cookie", cookie("soe_session", session));
   headers.append("set-cookie", cookie("soe_oauth", "", 0));
   return new Response(null, { status: 302, headers });

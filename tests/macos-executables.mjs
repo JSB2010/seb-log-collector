@@ -7,6 +7,7 @@ const { version } = JSON.parse(await readFile("package.json", "utf8"));
 const scripts = [
   "collector/soe-diagnostics",
   "collector/read-source",
+  "collector/manage.zsh",
   ...(await readdir("collector/lib"))
     .filter((f) => f.endsWith(".zsh"))
     .map((f) => `collector/lib/${f}`),

@@ -1,45 +1,58 @@
-# Jamf School lifecycle
+# Installation and device management
 
 ## Install and enroll
 
-Enable the existing Jamf School scripting module. In the dashboard, create an enrollment batch using **Jamf group — automatic acceptance**, enter the group name and a device ceiling, then download the **install and enroll** script. Scope it to that Jamf group, initially a restricted pilot. Every Mac running the script automatically registers with its own credential; no serial list is required. The group name is an assignment label, not a live Jamf API membership check. Possession of the short-lived bootstrap delivered in the scoped script permits registration within the window and ceiling.
+1. Open **Enrollment → Create enrollment**. Enter a rollout or group name, maximum device count (up to 1,000), and a one-, three-, or seven-day window.
+2. Select **Download script**. Paste the complete readable script into Jamf School with its scripting module enabled. Run as root, once per device, scoped initially to a restricted pilot.
+3. Confirm the Macs appear in Fleet and report successful collection before expanding the scope. Close enrollment when rollout finishes.
 
-The downloaded script embeds the checked collector payload and deployment origin, installs fixed protected project files, enrolls, then registers the LaunchDaemon. It downloads no executable code and preserves SEB, original logs, Keychain items, MDM profiles, and school certificates. Bootstrap codes expire after at most seven days and are shown once. Automatic batches admit at most 1,000 registrations. Close the batch and remove the script from scope after rollout; later devices use a fresh batch. Do not publish the downloaded operational script.
+Every Mac executing the script registers automatically with its own permanent credential. No serial list or Jamf API access is required. The name is an assignment label; delivery scope, the time window, and the registration ceiling control enrollment. The same script can be used across the intended devices and downloaded again. Existing installations reconcile without consuming another slot. **Reopen** extends the same enrollment for seven days; **Edit** changes its name, ceiling, or window without resetting its enrolled count.
 
-An offline install records pending enrollment privately and starts the daemon for retry. No source scan occurs until enrollment succeeds and fresh collection permission is received. The bootstrap is removed on acknowledgment or after seven days locally; the server's shorter expiry still applies. A saved installation credential recovers a lost enrollment response even after bootstrap expiry. Jamf receives failure for a pending initial enrollment, so confirm the eventual fleet record before declaring installation complete.
+The complete installer source is in the script as readable quoted heredocs, with checksum and syntax validation before replacement. No base64-packed executable payload or installer-code download is used. The operational copy contains the configured origin and temporary bootstrap; keep it in restricted IT/Jamf storage. Generic public releases contain neither credentials nor a deployment origin.
 
-**Approved serial roster** remains an optional stricter mode. CSV columns are `serial`, optionally `assignedLabel`, `schoolEmail`, and `jamfId`; use at most 400 per atomic batch. Generic install/update scripts remain available for lifecycle operations and contain no bootstrap. The dashboard's combined installer prevents separate installation/enrollment scope ordering problems.
+An offline install records pending enrollment privately and starts the daemon to retry. Source scanning starts only after enrollment and fresh server permission. The bootstrap is removed after acknowledgment or seven days locally; the server’s shorter window still applies. A lost enrollment response can reconcile with the saved permanent credential after bootstrap expiry. An initially pending enrollment returns failure to Jamf, so inspect the eventual Fleet record before declaring success.
 
-The generic releases contain no bootstrap/device secrets or environment-specific origin. Jamf's restricted delivery does not conceal a secret from a local administrator. The permanent credential is different on each Mac; only its SHA-256 hash is stored on the server.
+## Local commands
 
-## Collect and pause
+The installer places these at `/Library/Application Support/SOEDiagnostics/`:
 
-The daemon runs a bounded tick every 30 minutes and exits. Daily due times are staggered between 15:30 and 19:30 local time; later boots/ticks catch up. The initial window is seven days, subsequent discovery up to 90 days. Requests run at the next successful tick; use `collect-now.zsh` through Jamf for faster delivery. SEB running, a local pause, or a central pause defers work.
+| Double-click command               | Behavior                                                               |
+| ---------------------------------- | ---------------------------------------------------------------------- |
+| **Collect Now.command**            | Run a bounded collection immediately, then show status                 |
+| **Status.command**                 | Show version, enrollment, local pause, outcome and last contact        |
+| **Update.command**                 | Fetch and install a newer verified release from the configured service |
+| **Reinstall.command**              | Repair the current cached release offline                              |
+| **Uninstall.command**              | Remove the collector and attempt server revocation                     |
+| **Pause.command / Resume.command** | Control local collection                                               |
 
-`status --json` reports nonsecret local state. The dashboard shows last contact, collection reports and quota/read problems. A sleeping/offline Mac is not instantly reachable. Central requests expire after 24 hours. Local pause/resume scripts work without network. The source helper uses the source user's UID/groups; it cannot use root's privileges to read private files.
+Double-clicking opens Terminal automatically and requests administrator authentication through `sudo`. Touch ID is available only if the Mac already enables it for sudo; the installer does not change authentication settings. `Read Me.txt` explains the commands. Internal code is in `bin/`, recovery and maintenance scripts in root-only `support/`, and private runtime data in `credentials/`, `state/`, and `staging/`. No PATH command is installed.
 
-A collection failure can occur before upload. A local `lastError` of `ledger_error` identifies a failed SQLite operation; collector errors omit source/device metadata. Diagnose the local status and ledger before treating every failed collection as a network outage.
+## Collection and dashboard requests
 
-Terminal reports remain in private state until delivery and request acknowledgment succeed, with a seven-day/100-report bound. Collector-owned logs rotate at 2 MiB with three archived files retained for at most seven days. Original SEB logs are never rotated or deleted by the collector.
+The LaunchDaemon checks in every 30 minutes while awake, runs a bounded tick, and exits. Daily collections are staggered between 15:30 and 19:30 local time with catch-up after later boots. The initial scan window is seven days; later scans can discover up to 90 days of logs.
 
-## Update and recover
+**Queue collection** creates a server-side request. At its next successful check-in, the Mac reads the request, acknowledges it, and performs the specified bounded collection. It is a working polling mechanism, not an immediate connection to the Mac. Requests expire after 24 hours. Sleeping/offline Macs wait until they can check in. Safe Exam Browser running, local pause, or central pause defers scanning. For faster delivery use **Collect now** through Jamf or the local command.
 
-Regenerate versioned releases after changing source. Update uses the same checked embedded installer, stops the known job, checks the full staged payload, refuses incompatible database downgrades, and preserves credentials, the ledger, staging and pause state. The previous `bin` tree remains under the project-owned `previous` directory. Inspect the update result and daemon registration before declaring success.
+Device details show human-readable collection history and link to that device’s logs. The catalog’s **Open** action opens authenticated, verified plain text in a new tab; **Download gzip** remains available in log details. Dates, device filters, tabs, and selected details survive refresh through real page URLs.
 
-Version 0.1.2 corrects native `chown` and `readlink` paths and checks required tools before stopping a job. For the 0.1.1 installer failure reporting `/bin/chown`, replace the Jamf script with a newly downloaded install-and-enroll script and run it again on the same restricted scope. Reuse the original operational bootstrap only while its batch remains open and unexpired; otherwise create a fresh batch. The installer repairs the partial files while preserving existing configuration and device credentials. Verify a successful Jamf result, collector version, and a Fleet record before expanding scope.
+Collection failures can occur before upload. `ledger_error` is a failed SQLite operation, not necessarily a transport failure. Inspect nonsecret `status --json`, the ledger summary, and collector logs. The source helper runs with the source user’s UID/groups; it does not use root to read private source files. Do not grant fleet-wide Full Disk Access to a shared shell interpreter as a workaround.
 
-Version 0.1.3 corrects SQLite quoting for apostrophes in computer names, filenames and other metadata, and hashing of filenames containing backslashes. It recovers compressed files left without a ledger row by rebuilding them from the verified original source during discovery. Update existing installations with the generic updater, then run `collect-now.zsh` in the same restricted scope to trigger discovery immediately. Confirm accepted logs, a successful collection report and no local staged backlog. Keep the original enrollment and ledger; re-enrollment does not repair this failure. A failed ledger confirmation or expiry update preserves its staged payload. Untracked payloads expire after seven days and incomplete compression after one day; original SEB logs remain untouched.
+## Remote update, collection, pause, and removal
 
-For rollback, stop the job, verify the previous release checksum/version and SQLite schema compatibility, restore only the old `bin` directory, then register the current plist. Do not restore an older SQLite database or create a new enrollment to hide a failed update. An incomplete update requires operator recovery; it must not be declared successful because files were copied.
+In **Enrollment → Device management**, download or copy the **Update**, **Uninstall**, **Collect now**, **Pause**, or **Resume** script. Paste the complete script into Jamf School, run as root once, and use an explicit device/group scope. These use existing credentials and need no enrollment token. A script runs on every Mac in its Jamf scope; select the entire managed scope only when that is the intended action.
 
-To replace credentials, revoke the old installation and remove its local credential through a targeted uninstall/reinstall using a fresh automatic batch. If using roster mode, explicitly reset the serial in its batch (API) before re-enrollment. Stable server device IDs preserve accepted logs and deduplication. A revoked credential is never reactivated.
+The dashboard’s Update script is the currently deployed release’s complete updater. Download a fresh copy after a release and test it on a restricted scope before widening. It safely exits if the collector is absent and preserves origin, credentials, ledger, queued payloads, and local pause. The local **Update.command** instead consults the configured service’s approved `collector/manifest.json`, validates the version and fixed same-origin installer path, uses HTTPS without insecure TLS or redirect following, verifies SHA-256 and syntax, and refuses downgrades. GitHub releases contain the matching generic package and checksums; updating follows the deployed approved release rather than blindly trusting the newest GitHub tag.
 
-## Uninstall
+**Reinstall.command** verifies the cached bootstrap-free installer and repairs the same version without network. Validation precedes stopping the daemon, and the previous binary directory is retained during replacement. State and credentials are preserved; a saved bootstrap is never needed for repairs or ordinary updates.
 
-Remove the device from installation and enrollment scopes first. Revoke it in the dashboard. Explicitly deploy `jamf/releases/uninstall.zsh`; removing installer scope alone does not remove already installed files.
+Uninstall is offline-safe and idempotent. It writes a stopping marker, attempts self-deactivation for a bounded interval, stops the fixed daemon and collector processes, and removes only project-owned paths. It leaves Safe Exam Browser, original user logs, MDM profiles, school certificates and unrelated software in place. If offline, revoke the device in Fleet separately. Confirm absence after reboot and launch an ordinary exam. To replace a revoked installation, uninstall and reinstall with an open enrollment; the stable server device ID preserves accepted logs and deduplication.
 
-The uninstaller works offline and idempotently, writes a stopping marker, attempts self-deactivation for a short bounded interval, boots out the fixed daemon, confirms known processes stopped, then removes only the fixed project paths. It never removes SEB, original user logs, MDM scripting/enrollment, or certificates. An offline removal is separate from server revocation and cancellation. Verify absence after reboot and launch an ordinary SEB exam.
+## Upgrading from before 0.2.0
+
+Update existing Macs with the new dashboard Update script to add the local commands and organized folder layout. No re-enrollment is required. Downloading an older enrollment for the first time refreshes its code once because earlier releases stored only a hash. Replace earlier copies of that enrollment script; already enrolled Macs keep their credentials.
+
+Server operators should add the descending Firestore indexes before switching traffic. If existing session associations are present, run `deployment/backfill-session-dates.mjs` with explicit `GCP_ACCOUNT` and `GCP_PROJECT`, inspect its dry-run counts, then run with `--apply` to copy each log’s acceptance timestamp without changing retention. Keep `SESSION_SECRET` stable: it also protects retrievable enrollment codes. After rotating it, create fresh enrollments rather than attempting to decrypt old codes.
 
 ## Pilot checks
 
-Test the actual student homes and launchd/Jamf context. Do not grant fleet-wide Full Disk Access to a shared shell interpreter to work around a failed read. Investigate the responsible process and approved managed deployment instead. Custom log directories, privacy denials, multiple SEB installations and unsupported utility options require operator attention. The current collector intentionally supports the standard directory and fixed bounded limits; future device-specific overrides require explicit implementation/testing.
+Verify actual Jamf/launchd execution, standard and multiple users, relevant macOS versions and architectures, privacy access, SEB exam deferral, sleep/wake, offline retries, update preservation, and offline removal. Native fixtures and a successful cloud upload are separate evidence from a managed fleet pilot. Custom log directories and device-specific limit overrides require explicit implementation and testing.

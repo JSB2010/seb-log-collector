@@ -27,7 +27,9 @@ const metadata = {
 };
 const serials = ["SYNTHETIC001", "SYNTHETIC002", "SYNTHETIC003"];
 const batch = await request("/api/admin/v1/enrollment-batches", "POST", {
-  roster: serials.map((serial) => ({ serial, assignedLabel: "Pilot fixture" })),
+  label: "Pilot fixture",
+  ceiling: serials.length,
+  days: 1,
 });
 for (let i = 0; i < serials.length; i++) {
   const installationId = randomUUID(),

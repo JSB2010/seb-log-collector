@@ -117,31 +117,24 @@ export const collection = z
     metadata,
   })
   .strict();
-export const rosterEntry = z
+export const batch = z
   .object({
-    serial,
-    assignedLabel: text.default(""),
-    schoolEmail: z.union([z.email().max(254), z.literal("")]).default(""),
-    jamfId: text.default(""),
+    label: text.min(1),
+    ceiling: z.number().int().min(1).max(1000).default(1000),
+    days: z.number().int().min(1).max(7).default(7),
+    // Accept older automatic-enrollment clients while removing roster enrollment.
+    mode: z.literal("jamf").optional(),
   })
   .strict();
-export const batch = z.union([
-  z
-    .object({
-      mode: z.literal("jamf"),
-      label: text.min(1),
-      ceiling: z.number().int().min(1).max(1000).default(1000),
-      days: z.number().int().min(1).max(7).default(7),
-    })
-    .strict(),
-  z
-    .object({
-      mode: z.literal("roster").default("roster"),
-      roster: z.array(rosterEntry).min(1).max(400),
-      days: z.number().int().min(1).max(7).default(7),
-    })
-    .strict(),
-]);
+export const batchUpdate = z
+  .object({
+    state: z.enum(["open", "closed"]).optional(),
+    label: text.min(1).optional(),
+    ceiling: z.number().int().min(1).max(1000).optional(),
+    days: z.number().int().min(1).max(7).optional(),
+  })
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, "No changes supplied");
 export const requestSchema = z
   .object({ from: when, to: when })
   .strict()

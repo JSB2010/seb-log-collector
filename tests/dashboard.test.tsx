@@ -32,6 +32,7 @@ const fleetDevice = { id: "device-a", serial: "SYNTHETIC-A", state: "active" };
 
 beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  window.history.replaceState(null, "", "/fleet");
   pending = new Map();
   vi.stubGlobal(
     "fetch",
@@ -63,12 +64,14 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 async function navigate(label: string) {
-  const button = [...container.querySelectorAll("nav button")].find(
+  const button = [...container.querySelectorAll("nav a")].find(
     (b) => b.textContent === label,
   );
   expect(button).toBeDefined();
   await act(async () => {
-    button!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    button!.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
   });
   expect(container.querySelector("h1")?.textContent).toBe(label);
 }
@@ -85,7 +88,9 @@ async function click(label: string) {
   );
   expect(button).toBeDefined();
   await act(async () => {
-    button!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    button!.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
   });
 }
 
@@ -187,4 +192,75 @@ it("discards a late device detail response after selecting a log", async () => {
       .resolve(reply({ device: fleetDevice, collections: [] }));
   });
   expect(container.querySelector("h2")?.textContent).toBe("synthetic.log");
+});
+
+it("persists real tab URLs and restores filters and selection after remount", async () => {
+  await navigate("Requests");
+  expect(location.pathname).toBe("/requests");
+  await navigate("Audit");
+  expect(location.pathname).toBe("/audit");
+  await act(async () => root.unmount());
+  window.history.replaceState(
+    null,
+    "",
+    "/logs?deviceId=device-a&device=Example+Mac&from=2026-01-01&to=2026-01-07&selected=log-a",
+  );
+  root = createRoot(container);
+  await act(async () =>
+    root.render(createElement(Dashboard, { initialView: "logs" })),
+  );
+  expect(container.querySelector("h1")?.textContent).toBe("Log catalog");
+  expect(container.textContent).toContain("Example Mac");
+  expect(location.search).toContain("deviceId=device-a");
+  expect(location.search).toContain("selected=log-a");
+  expect(
+    vi
+      .mocked(fetch)
+      .mock.calls.some(([url]) =>
+        String(url).includes("logs?deviceId=device-a"),
+      ),
+  ).toBe(true);
+  await act(async () => {
+    window.history.replaceState(null, "", "/requests");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  expect(container.querySelector("h1")?.textContent).toBe("Requests");
+});
+it("renders readable device activity and provides an exact device log link", async () => {
+  await click("SYNTHETIC-ASYNTHETIC-A");
+  await act(async () =>
+    pending
+      .get("devices/device-a")!
+      .shift()!
+      .resolve(
+        reply({
+          device: fleetDevice,
+          collections: [
+            {
+              id: "activity-a",
+              reason: "on_demand",
+              outcome: "completed",
+              counts: { found: 3, confirmed: 2, skipped: 1 },
+              errors: ["transport"],
+            },
+          ],
+        }),
+      ),
+  );
+  expect(container.textContent).toContain("Requested collection");
+  expect(container.textContent).toContain(
+    "3 found · 2 uploaded · 1 already uploaded",
+  );
+  expect(container.textContent).not.toContain('"found":');
+  const link = [...container.querySelectorAll("a")].find(
+    (a) => a.textContent === "View device logs",
+  )!;
+  expect(link.href).toContain("/logs?deviceId=device-a");
+  await act(async () =>
+    link.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(location.pathname).toBe("/logs");
+  expect(location.search).toContain("deviceId=device-a");
 });

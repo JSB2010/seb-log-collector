@@ -16,6 +16,7 @@ export interface Store {
     order?: string,
     cursor?: string,
     limit?: number,
+    direction?: "asc" | "desc",
   ): Promise<Doc[]>;
 }
 let singleton: Store;
@@ -50,11 +51,12 @@ export class CloudStore implements Store {
     order = "id",
     cursor?: string,
     limit = 50,
+    direction: "asc" | "desc" = "asc",
   ) {
     let q: FirebaseFirestore.Query = this.db.collection(collection);
     for (const [field, op, value] of filters)
       q = q.where(field, op as FirebaseFirestore.WhereFilterOp, value);
-    q = q.orderBy(order).orderBy("__name__").limit(limit);
+    q = q.orderBy(order, direction).orderBy("__name__", direction).limit(limit);
     if (cursor) {
       const c = JSON.parse(Buffer.from(cursor, "base64url").toString());
       q = q.startAfter(c.value, this.db.doc(`${collection}/${c.id}`));
@@ -92,6 +94,7 @@ export class MemoryStore implements Store {
     order = "id",
     cursor?: string,
     limit = 50,
+    direction: "asc" | "desc" = "asc",
   ) {
     const v = cursor
       ? JSON.parse(Buffer.from(cursor, "base64url").toString())
@@ -124,12 +127,16 @@ export class MemoryStore implements Store {
       .map(([p, d]): Doc => ({ ...structuredClone(d), id: p.split("/")[1] }))
       .sort(
         (a, b) =>
-          String(a[order]).localeCompare(String(b[order])) ||
-          a.id.localeCompare(b.id),
+          (direction === "desc" ? -1 : 1) *
+          (String(a[order]).localeCompare(String(b[order])) ||
+            a.id.localeCompare(b.id)),
       )
       .filter(
         (d) =>
-          !v || d[order] > v.value || (d[order] === v.value && d.id > v.id),
+          !v ||
+          (direction === "desc"
+            ? d[order] < v.value || (d[order] === v.value && d.id < v.id)
+            : d[order] > v.value || (d[order] === v.value && d.id > v.id)),
       )
       .slice(0, limit);
   }

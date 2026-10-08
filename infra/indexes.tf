@@ -16,7 +16,7 @@ resource "google_firestore_index" "catalog" {
   }
 }
 resource "google_firestore_field" "ttl" {
-  for_each   = toset(["devices", "collections", "collectionRequests", "sessionLinks", "auditEvents", "enrollmentBatches", "enrollmentRoster", "quotaWindows"])
+  for_each   = toset(["devices", "collections", "collectionRequests", "sessionLinks", "auditEvents", "enrollmentBatches", "enrollmentTokens", "enrollmentRoster", "quotaWindows"])
   database   = google_firestore_database.catalog.name
   collection = each.key
   field      = "ttlAt"

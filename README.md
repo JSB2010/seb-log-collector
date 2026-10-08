@@ -7,9 +7,9 @@ This project requires no Apple Developer account, signed package, notarization, 
 ## Components
 
 - `src/server`: enrollment, per-device credentials, durable reservations/quotas, verification, admin authorization, retention, and optional Safe Online Exam lookup.
-- `src/components`: fleet, log catalog, device details, roster enrollment, requests, audit history, and live administrator management.
+- `src/components`: fleet, log catalog, device details, reusable enrollment, requests, audit history, and live administrator management.
 - `collector`: short-lived zsh coordinator, SQLite ledger, and source reader running as the source user.
-- `jamf/releases`: embedded install/update scripts, offline uninstaller, manifest, and SHA-256 checksums.
+- `jamf/releases`: readable self-contained install/update scripts, offline uninstaller, manifest, and SHA-256 checksums.
 - `infra`: Terraform for private storage, Firestore/indexes/TTL, narrow identities, Cloud Run, secrets, Scheduler, and monitoring.
 - `docs`: operating instructions, security limitations, API contracts, and acceptance gates.
 
@@ -31,7 +31,7 @@ On a development Mac, run `node tests/macos-executables.mjs`, `node tests/macos-
 
 ## Deployment
 
-Follow [cloud setup](docs/cloud-setup.md). Configuration and credentials belong in ignored env/tfvars files and Secret Manager. Do not commit operational rosters, bootstrap codes, downloaded logs, service-account keys, Terraform state, or OAuth secrets. Use attached service identities and IAM signing rather than downloaded private keys.
+Follow [cloud setup](docs/cloud-setup.md). Configuration and credentials belong in ignored env/tfvars files and Secret Manager. Do not commit bootstrap codes, downloaded logs, service-account keys, Terraform state, or OAuth secrets. Use attached service identities and IAM signing rather than downloaded private keys.
 
 Create infrastructure first with `create_service=false`, add the session secret version, build the container, and deploy with `create_service=true` and an immutable image digest. Set a deliberately small maximum instance count; zero minimum instances avoids idle compute. Billing alerts are alerts, not spending caps. Measured pilot volume should determine an operating budget.
 
@@ -39,7 +39,7 @@ Google OAuth configuration is required for human sign-in. Admins are explicitly 
 
 ## Jamf and rollout
 
-Follow [installation and removal](docs/jamf-runbook.md). Create a Jamf-group enrollment batch in the dashboard and download its combined install-and-enroll script. Macs running that scoped script register automatically, without a serial list, using a temporary bootstrap and unique permanent credentials. Serial-roster enrollment remains optional. Public generic packages contain no deployment origin or bootstrap; the downloaded operational script must stay restricted. Version one supports the standard home-relative SEB log directory and leaves privacy settings unchanged.
+Follow [installation and removal](docs/jamf-runbook.md). Create an enrollment in the dashboard and download its combined install-and-enroll script. Macs running that scoped script register automatically, without a serial list, using a temporary bootstrap and unique permanent credentials. Enrollments can be reopened and their script downloaded repeatedly. Serial-reusable enrollment remains optional. Public generic packages contain no deployment origin or bootstrap; the downloaded operational script must stay restricted. Version one supports the standard home-relative SEB log directory and leaves privacy settings unchanged.
 
 Complete a five-to-ten-device pilot before fleet rollout. Verify the actual launchd/Jamf context, SEB exam deferral, privacy access, sleep/wake, standard and admin users, Intel/Apple silicon where needed, updates, and offline removal. See [acceptance checklist](docs/acceptance.md). A successful cloud upload or shell syntax check is separate evidence from successful managed-device deployment.
 
@@ -54,3 +54,7 @@ Safe Online Exam integration is optional and server-to-server. It provides manua
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+Dashboard pages have persistent URLs (`/fleet`, `/logs`, `/enrollment`, `/requests`, `/audit`, `/admins`) with filters and selected details in the query string. Activity is ordered newest first before pagination. Device details link directly to the device’s retained logs; **Open** renders an authenticated, verified log as plain text in a new tab.
+
+Release 0.2.0 adds Finder commands in Application Support and a **Device management** section in Enrollment with Jamf update, removal, collection, pause, and resume scripts. See the [runbook](docs/jamf-runbook.md) for the folder layout, update verification, and upgrade steps.

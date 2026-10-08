@@ -159,7 +159,13 @@ header p {
   display: grid;
   gap: 8px;
 }
-.sidebar nav button {
+.sidebar nav a {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--ink);
   border: 0;
   background: none;
   justify-content: flex-start;
@@ -167,15 +173,15 @@ header p {
   padding: 12px 16px;
   gap: 15px;
 }
-.sidebar nav button svg {
+.sidebar nav a svg {
   color: var(--muted);
 }
-.sidebar nav button.active {
+.sidebar nav a.active {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 600;
 }
-.sidebar nav button.active svg {
+.sidebar nav a.active svg {
   color: var(--accent);
 }
 .sidebar footer {
@@ -590,18 +596,31 @@ pre {
     overflow-x: auto;
     gap: 4px;
   }
-  .sidebar nav button {
+  .sidebar nav a {
+    display: flex;
+    align-items: center;
+    min-height: 42px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--ink);
     padding: 8px 12px;
     min-height: 35px;
     white-space: nowrap;
     gap: 7px;
   }
-  .sidebar nav button svg {
+  .sidebar nav a svg {
     width: 15px;
     height: 15px;
   }
   .sidebar footer {
-    display: none;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
   }
   .workspace {
     padding: 24px 16px;
@@ -715,5 +734,92 @@ button:not(:disabled):active,
   .button,
   a {
     transition: none;
+  }
+}
+
+.filter-context {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: var(--accent-soft);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.filter-context button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.row-actions button {
+  font-size: 12px;
+  min-height: 34px;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+.advanced-filters {
+  margin: 0 0 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 500;
+}
+.advanced-filters .session-filters {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+.scripts-panel {
+  margin-top: 40px;
+  border-top: 1px solid var(--line);
+  padding-top: 28px;
+}
+.scripts-panel > p {
+  color: var(--muted);
+  margin: 8px 0 20px;
+}
+.script-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+}
+.script-grid article {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 20px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.script-grid h3 {
+  margin: 0;
+}
+.script-grid p {
+  font-size: 13px;
+  color: var(--muted);
+  flex: 1;
+}
+.request-timing {
+  margin: 16px 0;
+}
+.activity-error {
+  color: #a11919;
+}
+@media (max-width: 700px) {
+  .filter-context {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .script-grid {
+    grid-template-columns: 1fr;
   }
 }
