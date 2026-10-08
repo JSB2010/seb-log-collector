@@ -27,7 +27,7 @@ npm run dev
 
 For an isolated synthetic dashboard, set `DEV_AUTH=true` and `DEV_MEMORY=true`, use `http://127.0.0.1:3000` as `PUBLIC_ORIGIN`, and fill the remaining settings with synthetic values. The local UI supplies `x-dev-admin: true` only when compiled in development and opened on loopback. Every bypass is rejected in production and Cloud Run. Then run `node tests/local-api-smoke.mjs` once against the empty local store. Do not use real school data in memory mode.
 
-On a development Mac, run `/bin/zsh -f tests/macos-tools.zsh`. This verifies native utilities against workspace fixtures; it does not install a daemon or access real SEB logs. `npm run release:collector` regenerates the Jamf payloads. CI runs server checks, native macOS checks, and pinned ShellCheck on the portable deployment wrapper. ShellCheck does not understand zsh; zsh sources use the actual zsh parser and macOS behavior tests.
+On a development Mac, run `node tests/macos-executables.mjs`, `node tests/macos-installer.mjs`, and `/bin/zsh -f tests/macos-tools.zsh`. These verify shipped command paths, generated payload extraction/recovery, and native utilities against workspace fixtures; launchd/process controls are mocked and no real SEB logs are accessed. `npm run release:collector` regenerates the Jamf payloads. CI runs server checks, native macOS checks, and pinned ShellCheck on the portable deployment wrapper. ShellCheck does not understand zsh; zsh sources use the actual zsh parser and macOS behavior tests.
 
 ## Deployment
 

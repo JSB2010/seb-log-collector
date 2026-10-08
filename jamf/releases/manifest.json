@@ -1,10 +1,10 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "schemaVersion": 1,
   "files": [
     {
       "name": "soe-diagnostics",
-      "sha256": "cad06b78e03a739f4b6d1e033233d859793a0b286d91124d7887e24537101bda"
+      "sha256": "b5441b41d6544d053ebdc349d2b01807b6c90585cf7cf082713652176fbddb85"
     },
     {
       "name": "read-source",
@@ -32,7 +32,7 @@
     },
     {
       "name": "lib/metadata.zsh",
-      "sha256": "02072f93b0c8574182e48718619588b27d6ec6ce7342322715ebbb3288459caf"
+      "sha256": "ca63ee0a5e82b61289873f140da84f309803f3e2c9b3a39c9c069ad3f0d2aefd"
     }
   ]
 }

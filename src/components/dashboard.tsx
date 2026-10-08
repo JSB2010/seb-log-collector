@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./icon";
 import { csvCell, parseRoster } from "./csv";
 import { enrollmentInstaller } from "./enrollment";
@@ -51,6 +51,10 @@ function save(name: string, data: string, type = "application/json") {
   URL.revokeObjectURL(url);
 }
 export function Dashboard() {
+  const currentView = useRef("fleet"),
+    navigation = useRef(0),
+    listRequest = useRef(0),
+    detailRequest = useRef(0);
   const [me, setMe] = useState<Row | null | undefined>(undefined),
     [view, setView] = useState("fleet"),
     [rows, setRows] = useState<Row[]>([]),
@@ -108,7 +112,8 @@ export function Dashboard() {
   }, [api]);
   const load = useCallback(
     async (append = false, next?: string) => {
-      if (!me) return;
+      if (!me || currentView.current !== view) return;
+      const request = ++listRequest.current;
       setBusy(true);
       setError("");
       try {
@@ -128,12 +133,13 @@ export function Dashboard() {
         }
         if (next) p.set("cursor", next);
         const r = await api(`${resource[view]}?${p}`);
+        if (request !== listRequest.current) return;
         setRows((old) => (append ? [...old, ...r.items] : r.items));
         setCursor(r.nextCursor);
       } catch (e) {
-        setError((e as Error).message);
+        if (request === listRequest.current) setError((e as Error).message);
       } finally {
-        setBusy(false);
+        if (request === listRequest.current) setBusy(false);
       }
     },
     [
@@ -153,24 +159,33 @@ export function Dashboard() {
   );
   useEffect(() => {
     void load();
+    return () => {
+      listRequest.current++;
+    };
   }, [load]);
   useEffect(() => {
     const t = setTimeout(() => setSearch(query.trim()), 300);
     return () => clearTimeout(t);
   }, [query]);
   async function open(r: Row) {
+    if (currentView.current !== view) return;
+    const request = ++detailRequest.current;
     setSelected(r);
     setPreview(null);
     setDetail(null);
     try {
-      if (view === "fleet") setDetail(await api(`devices/${r.id}`));
-      else if (view === "logs")
-        setDetail({
-          log: await api(`logs/${r.id}`),
-          links: (await api(`session-links?logId=${r.id}`)).items,
-        });
+      let result: Row | null = null;
+      if (view === "fleet") result = await api(`devices/${r.id}`);
+      else if (view === "logs") {
+        const [log, links] = await Promise.all([
+          api(`logs/${r.id}`),
+          api(`session-links?logId=${r.id}`),
+        ]);
+        result = { log, links: links.items };
+      }
+      if (request === detailRequest.current) setDetail(result);
     } catch (e) {
-      setError((e as Error).message);
+      if (request === detailRequest.current) setError((e as Error).message);
     }
   }
   async function act(
@@ -179,20 +194,33 @@ export function Dashboard() {
     data?: unknown,
     message = "Saved",
   ) {
+    const page = navigation.current,
+      selection = detailRequest.current;
     setBusy(true);
     setError("");
     try {
       await api(path, method, data);
+      if (page !== navigation.current) return;
       setNotice(message);
       await load();
-      if (selected) await open(selected);
+      if (selected && selection === detailRequest.current) await open(selected);
     } catch (e) {
-      setError((e as Error).message);
+      if (page === navigation.current) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (page === navigation.current) setBusy(false);
     }
   }
   function changeView(v: string) {
+    if (v === currentView.current) return;
+    currentView.current = v;
+    navigation.current++;
+    listRequest.current++;
+    detailRequest.current++;
+    // Clear records in the same update as the view; each table has a distinct shape.
+    setRows([]);
+    setCursor(null);
+    setBusy(true);
+    setError("");
     setView(v);
     setQuery("");
     setSearch("");
@@ -204,6 +232,7 @@ export function Dashboard() {
     setSeb("");
     setSelected(null);
     setDetail(null);
+    setPreview(null);
     setNotice("");
   }
   if (me === undefined)
@@ -693,7 +722,12 @@ export function Dashboard() {
           <button
             className="close"
             aria-label="Close details"
-            onClick={() => setSelected(null)}
+            onClick={() => {
+              detailRequest.current++;
+              setSelected(null);
+              setDetail(null);
+              setPreview(null);
+            }}
           >
             <Icon name="close" />
           </button>
@@ -839,11 +873,18 @@ export function Dashboard() {
               </dl>
               <div className="detail-actions">
                 <button
-                  onClick={() =>
-                    api(`logs/${selected.id}/preview`)
-                      .then(setPreview)
-                      .catch((e) => setError(e.message))
-                  }
+                  onClick={() => {
+                    const request = detailRequest.current;
+                    void api(`logs/${selected.id}/preview`)
+                      .then((result) => {
+                        if (request === detailRequest.current)
+                          setPreview(result);
+                      })
+                      .catch((e) => {
+                        if (request === detailRequest.current)
+                          setError(e.message);
+                      });
+                  }}
                 >
                   Preview text
                 </button>

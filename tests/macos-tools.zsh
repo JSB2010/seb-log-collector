@@ -34,6 +34,10 @@ source "$project/collector/lib/common.zsh"
 source "$project/collector/lib/ledger.zsh"
 source "$project/collector/lib/collection.zsh"
 WORK=$(/usr/bin/mktemp -d "$STATE/test-report.XXXXXXXX")
+source "$project/collector/lib/metadata.zsh"
+typeset VERSION=synthetic
+metadata "$WORK/native-metadata.json"
+[[ $(json_value "$WORK/native-metadata.json" collectorVersion) == synthetic && -n $(json_value "$WORK/native-metadata.json" timezone) ]]
 METADATA="$WORK/metadata.json"; print -r -- '{"collectorVersion":"synthetic"}' > "$METADATA"
 COLLECTION_ID=$(/usr/bin/uuidgen); COLLECTION_ID=${COLLECTION_ID:l}
 REQUEST_ID=$(/usr/bin/uuidgen); REQUEST_ID=${REQUEST_ID:l}

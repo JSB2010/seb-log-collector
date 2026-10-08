@@ -26,6 +26,8 @@ jobs:
       - name: zsh syntax and native tools
         run: |
           for f in collector/soe-diagnostics collector/read-source collector/lib/*.zsh jamf/*.zsh jamf/releases/*.zsh; do /bin/zsh -n "$f"; done
+          node tests/macos-executables.mjs
+          node tests/macos-installer.mjs
           /bin/zsh -f tests/macos-tools.zsh
       - name: Verify release checksums
         run: cd jamf/releases && shasum -a 256 -c SHA256SUMS
