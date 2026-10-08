@@ -44,6 +44,22 @@ function save(name: string, data: string, type = "application/json") {
   link.click();
   URL.revokeObjectURL(url);
 }
+async function copyScript(text: string) {
+  const unavailable =
+    "Copy is unavailable in this browser. Download the script instead.";
+  if (!navigator.clipboard?.writeText) throw new Error(unavailable);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      navigator.clipboard.writeText(text),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(unavailable)), 5000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
   const currentView = useRef<string>(initialView),
     navigation = useRef(0),
@@ -369,7 +385,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
       }
       const text = await r.text();
       if (copy) {
-        await navigator.clipboard.writeText(text);
+        await copyScript(text);
         if (page === navigation.current) setNotice("Script copied");
       } else {
         save(name, text, "text/plain");
