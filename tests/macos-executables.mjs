@@ -8,6 +8,7 @@ const scripts = [
   "collector/soe-diagnostics",
   "collector/read-source",
   "collector/manage.zsh",
+  "collector/management-worker.zsh",
   ...(await readdir("collector/lib"))
     .filter((f) => f.endsWith(".zsh"))
     .map((f) => `collector/lib/${f}`),

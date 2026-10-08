@@ -5,9 +5,9 @@ No school-wide rollout is implied by building or deploying the server. Use synth
 ## Automated checks
 
 - Server build/type checks and pinned dependency audit.
-- Exact 32-byte credential vector, automatic/conflicting enrollment, batch expiry, saved-credential recovery and revocation.
+- Exact 32-byte credential vector, automatic/conflicting enrollment, explicit group closure, saved-credential recovery and revocation.
 - Device/admin separation, current admin permission, CSRF and unsafe production-default rejection.
-- Automatic Jamf-group acceptance without a serial roster, concurrent enrollment ceiling, closed/expired bootstrap denial, deterministic combined installer and bounded offline enrollment retry.
+- Automatic Jamf-group acceptance without a serial roster, concurrent enrollment ceiling, closed/deleted bootstrap denial, deterministic combined installer and persistent private offline enrollment retry.
 - Concurrent reservation/daily accounting, durable completion/deduplication, immutable metadata and no retention extension.
 - Corrupt hashes, sizes, wrapper/trailer, concatenated members, trailing payloads and excessive expansion rejected.
 - Exact application cutoff before physical deletion, cleanup references preserved when deletion fails.
@@ -35,3 +35,5 @@ The operator-only cloud harness accepts `TEST_ORIGIN`, `TEST_BUCKET`, `GCP_PROJE
 5. Measured storage bytes, API reads/writes, CPU/memory, failures and download volume; then expand to 25–50, 250, and the remainder only after inspecting an actual exam and following daily collection.
 
 Custom directory support and device-specific limit overrides are not implemented in the initial collector. The standard directory and documented hard limits must match the pilot. Source logs are not authenticated evidence. Privacy/launchd/Jamf checks and the full architecture/version matrix must be reported as pending until actually run.
+
+Remote lifecycle regression checks cover pinned artifacts, command ownership, single pending command, cancellation, pause-independent check-in, exam deferral, teardown-only result access after revocation, exact installed-version acknowledgment, bulk replay and partial unsupported-device results. Native worker fixtures execute same/newer upgrades, checksum/downgrade/transport/install failures, successful/failed removal and credential cleanup with isolated transport/launchd controls. Actual transient launchd delivery on a live Mac remains a distinct acceptance stage.

@@ -172,13 +172,17 @@ try {
 emulate -LR zsh
 set -eu
 print -r -- "$*" >> "$SOE_FIXTURE_CURL_CALLS"
+if [[ $* == *ack.curl* ]]; then
+  /bin/cp "$SOE_FIXTURE_REMOTE_WORK/ack.json" "$SOE_FIXTURE_REMOTE_ACK"
+  print -rn 200; exit 0
+fi
 output=''; url=''
 while (( $# )); do
   if [[ $1 == --output ]]; then output=$2; shift 2
   else url=$1; shift; fi
 done
 if [[ $url == */collector/manifest.json ]]; then /bin/cp "$SOE_FIXTURE_MANIFEST" "$output"
-elif [[ $url == */collector/install.zsh ]]; then /bin/cp "$SOE_FIXTURE_INSTALLER" "$output"
+elif [[ $url == */collector/install.zsh || $url == */collector/releases/*/install.zsh ]]; then /bin/cp "$SOE_FIXTURE_INSTALLER" "$output"
 else exit 22; fi
 `,
     { mode: 0o755 },
@@ -230,6 +234,65 @@ else exit 22; fi
   const calls = await readFile(env.SOE_FIXTURE_CURL_CALLS, "utf8");
   assert.ok(calls.includes("--proto =https --tlsv1.2"));
   assert.ok(!calls.includes("--insecure") && !calls.includes("--location"));
+  // The remote worker executes the full generated updater, including code swap,
+  // recovery cache and permissions; transport and daemon control remain isolated.
+  const remoteWork = `${lab}/remote-work`;
+  await mkdir(remoteWork, { mode: 0o700 });
+  env.SOE_FIXTURE_REMOTE_WORK = remoteWork;
+  env.SOE_FIXTURE_REMOTE_ACK = `${lab}/remote-ack.json`;
+  const remoteId = "11111111-1111-4111-a111-111111111111";
+  await writeFile(
+    `${remoteWork}/device.json`,
+    JSON.stringify({ installationId: remoteId, secret: "a".repeat(43) }),
+  );
+  await writeFile(
+    `${remoteWork}/command.json`,
+    JSON.stringify({
+      id: remoteId,
+      action: "update",
+      origin: "https://diagnostics.example.org",
+      version,
+      sha256: fixtureHash,
+      path: `/collector/releases/${version}/install.zsh`,
+    }),
+  );
+  await writeFile(`${root}/state/installed-version`, "0.2.1\n");
+  let remote = await readFile("collector/management-worker.zsh", "utf8");
+  remote = remote
+    .replace("[[ $EUID == 0 ]] || exit 1", "[[ $EUID != 0 ]] || exit 1")
+    .replaceAll("/Library/Application Support/SOEDiagnostics", root)
+    .replace(
+      /^\[\[ \$work == .*\]\] \|\| exit 1$/m,
+      `[[ $work == '${remoteWork}' && -d $work && ! -L $work ]] || exit 1`,
+    )
+    .replaceAll("/usr/bin/curl", curl)
+    .replaceAll("/usr/bin/pgrep", pgrep)
+    .replaceAll("/bin/launchctl", launchctl);
+  const remoteScript = `${lab}/remote-worker.zsh`;
+  await writeFile(remoteScript, remote);
+  execFileSync("/bin/zsh", ["-f", remoteScript, remoteWork], {
+    env,
+    encoding: "utf8",
+    timeout: 30000,
+  });
+  assert.deepEqual(
+    JSON.parse(await readFile(env.SOE_FIXTURE_REMOTE_ACK, "utf8")),
+    { state: "completed", result: "installed", version },
+  );
+  assert.equal(
+    await readFile(`${root}/credentials/device.json`, "utf8"),
+    credentials,
+  );
+  assert.equal(await readFile(`${root}/config.json`, "utf8"), config);
+  assert.equal(
+    await readFile(`${root}/staging/fixture.gz`, "utf8"),
+    "synthetic-staging",
+  );
+  assert.equal(
+    await readFile(`${root}/state/installed-version`, "utf8"),
+    `${version}\n`,
+  );
+  await assert.rejects(stat(remoteWork), { code: "ENOENT" });
   // A broken recovery cache must fail before replacing the installation.
   await writeFile(`${root}/support/installer.zsh`, "#!/bin/zsh\nexit 0\n");
   assert.throws(() => maintenance("reinstall"), /checksum mismatch/);

@@ -2,7 +2,7 @@
 if [[ -d $ROOT ]]; then
   for p in "$ROOT/bin" "$ROOT/credentials" "$ROOT/state" "$ROOT/staging"; do safe_path "$p"; done
   /bin/mkdir -p "$ROOT/state"; /usr/bin/touch "$ROOT/state/stopping"
-  if [[ -f "$ROOT/bin/soe-diagnostics" ]]; then
+  if [[ ${SOE_MANAGED_UNINSTALL:-0} != 1 && -f "$ROOT/bin/soe-diagnostics" ]]; then
     /bin/zsh -f "$ROOT/bin/soe-diagnostics" prepare-uninstall >/dev/null 2>&1 || true
   fi
 fi

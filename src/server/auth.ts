@@ -102,7 +102,11 @@ export async function admin(
   }
   return { email, sub: String(c.sub), csrf: String(c.csrf) };
 }
-export async function device(req: Request, db = store()): Promise<Doc> {
+export async function device(
+  req: Request,
+  db = store(),
+  teardownCommand?: string,
+): Promise<Doc> {
   const m = bearer(req).match(/^([0-9a-f-]{36})\.([A-Za-z0-9_-]{43})$/i);
   requireThat(m, 401, "invalid_credential");
   const hash = credentialHash(m[2]),
@@ -112,8 +116,18 @@ export async function device(req: Request, db = store()): Promise<Doc> {
     const i = await tx.get(`installations/${m[1]}`);
     requireThat(i && equal(i.credentialHash, hash), 401, "invalid_credential");
     const d = await tx.get(`devices/${i.deviceId}`);
+    const c = teardownCommand
+      ? await tx.get(`deviceCommands/${teardownCommand}`)
+      : undefined;
+    const teardown =
+      c &&
+      c.action === "uninstall" &&
+      ["running", "completed", "failed"].includes(c.state) &&
+      c.deviceId === i.deviceId &&
+      c.installationId === m[1] &&
+      c.expiresAt > now.toISOString();
     requireThat(
-      !i.revokedAt && d && d.activeInstallation === m[1],
+      d && ((!i.revokedAt && d.activeInstallation === m[1]) || teardown),
       403,
       "credential_revoked",
     );

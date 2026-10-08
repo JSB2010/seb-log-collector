@@ -29,7 +29,5 @@ enroll() {
 retry_enrollment() {
   local pending="$STATE/enrollment-bootstrap" created
   [[ -f $pending && ! -L $pending ]] || return 1
-  created=$(/usr/bin/stat -f '%m' "$pending") || return 1
-  if (( $(/bin/date +%s)-created > 604800 )); then /bin/rm -f "$pending"; set_outcome bootstrap_expired; return 1; fi
   enroll < "$pending"
 }

@@ -823,3 +823,48 @@ summary {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 700px) {
+  .groups-table,
+  .groups-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .groups-table thead {
+    display: none;
+  }
+  .groups-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .groups-table tr:last-child {
+    border-bottom: 0;
+  }
+  .groups-table td {
+    padding: 0;
+    border: 0;
+  }
+  .groups-table td:nth-child(2) {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    color: var(--muted);
+  }
+  .groups-table td:nth-child(2)::before {
+    content: "Devices / limit: ";
+  }
+  .groups-table td:nth-child(3) {
+    grid-row: 1;
+    grid-column: 2;
+  }
+  .groups-table td:nth-child(4) {
+    grid-row: 3;
+    grid-column: 1 / -1;
+  }
+  .groups-table .row-actions select {
+    width: 100%;
+  }
+}

@@ -5,12 +5,12 @@ setopt ERR_EXIT NO_UNSET PIPE_FAIL EXTENDED_GLOB
 umask 077
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 unset CDPATH ENV BASH_ENV
-typeset -r VERSION=0.2.1
+typeset -r VERSION=0.3.0
 typeset ROOT='/Library/Application Support/SOEDiagnostics'
 if [[ ${SOE_TEST_MODE:-0} == 1 && $EUID != 0 && ${SOE_TEST_ROOT:-} == */.local/collector-test ]]; then ROOT=$SOE_TEST_ROOT; else [[ $EUID == 0 ]] || { print -u2 'Root required'; exit 1; }; fi
 typeset -r BIN="$ROOT/bin" STATE="$ROOT/state" STAGE="$ROOT/staging" CREDS="$ROOT/credentials/device.json" CONFIG="$ROOT/config.json"
 for dir in "$ROOT" "$BIN" "$STATE" "$STAGE" "$ROOT/credentials"; do [[ -d $dir && ! -L $dir ]] || { print -u2 'Collector path missing or unsafe'; exit 1; }; done
-for mod in common http ledger metadata enrollment collection; do
+for mod in common http ledger metadata enrollment management collection; do
   [[ -f "$BIN/lib/$mod.zsh" && ! -L "$BIN/lib/$mod.zsh" ]] || exit 1
   source "$BIN/lib/$mod.zsh"
 done

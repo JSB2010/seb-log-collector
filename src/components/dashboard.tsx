@@ -89,8 +89,15 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
     [restoredSelection, setRestoredSelection] = useState(""),
     [urlReady, setUrlReady] = useState(false),
     [batch, setBatch] = useState(false),
+    [confirmation, setConfirmation] = useState<{
+      title: string;
+      body: string;
+      run: () => void;
+    } | null>(null),
     [editingBatch, setEditingBatch] = useState<Row | null>(null),
-    [enrollmentDays, setEnrollmentDays] = useState(7),
+    [sort, setSort] = useState("session-newest"),
+    [requestKind, setRequestKind] = useState("collection"),
+    [groups, setGroups] = useState<Row[]>([]),
     [enrollmentLabel, setEnrollmentLabel] = useState(""),
     [enrollmentCeiling, setEnrollmentCeiling] = useState(1000),
     [adminEmail, setAdminEmail] = useState("");
@@ -124,6 +131,12 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
       .then(setMe)
       .catch(() => setMe(null));
   }, [api]);
+  useEffect(() => {
+    if (me)
+      api("enrollment-groups")
+        .then((r) => setGroups(r.items))
+        .catch((e) => setError(e.message));
+  }, [api, me?.email]);
   const load = useCallback(
     async (append = false, next?: string) => {
       if (!me || currentView.current !== view) return;
@@ -144,11 +157,18 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
         if (mac) p.set("macOS", mac);
         if (seb) p.set("seb", seb);
         if (view === "logs") {
+          p.set("sort", sort);
           p.set("from", new Date(from + "T00:00:00Z").toISOString());
           p.set("to", new Date(to + "T23:59:59Z").toISOString());
         }
         if (next) p.set("cursor", next);
-        const r = await api(`${resource[view]}?${p}`);
+        const target =
+          view === "requests" && requestKind !== "collection"
+            ? requestKind === "management"
+              ? "deviceCommands"
+              : "groupOperations"
+            : resource[view];
+        const r = await api(`${target}?${p}`);
         if (request !== listRequest.current) return;
         setRows((old) => (append ? [...old, ...r.items] : r.items));
         setCursor(r.nextCursor);
@@ -172,6 +192,8 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
       session,
       instance,
       deviceId,
+      sort,
+      requestKind,
     ],
   );
   useEffect(() => {
@@ -218,6 +240,9 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
       await api(path, method, data);
       if (page !== navigation.current) return;
       setNotice(message);
+      void api("enrollment-groups")
+        .then((r) => setGroups(r.items))
+        .catch((e) => setError(e.message));
       await load();
       if (selected && selection === detailRequest.current) await open(selected);
     } catch (e) {
@@ -240,6 +265,8 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
     setQuery(p.get("q") ?? "");
     setSearch(p.get("q") ?? "");
     setState(p.get("state") ?? "");
+    setSort(p.get("sort") ?? "session-newest");
+    setRequestKind(p.get("kind") ?? "collection");
     setLastContact(p.get("lastContact") ?? "");
     setSession(p.get("session") ?? "");
     setInstance(p.get("instance") ?? "");
@@ -254,6 +281,8 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
     setSelected(null);
     setDetail(null);
     setNotice("");
+    setConfirmation(null);
+    setBatch(false);
     setRestoredSelection(p.get("selected") ?? "");
     if (push) history.pushState(null, "", `/${v}${p.size ? `?${p}` : ""}`);
   }
@@ -278,6 +307,8 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
       seb,
       deviceId,
       device: deviceLabel,
+      ...(view === "logs" ? { sort } : {}),
+      ...(view === "requests" ? { kind: requestKind } : {}),
     }))
       if (value) p.set(key, value);
     if (view === "logs") {
@@ -305,6 +336,8 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
     deviceLabel,
     selected,
     restoredSelection,
+    sort,
+    requestKind,
   ]);
   useEffect(() => {
     if (me && restoredSelection && ["fleet", "logs"].includes(view)) {
@@ -313,14 +346,15 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
     }
   }, [me?.email, view, restoredSelection]);
   useEffect(() => {
-    if (!batch) return;
+    if (!batch && !confirmation) return;
     const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
     const previous = document.activeElement as HTMLElement | null;
-    dialog?.querySelector<HTMLInputElement>("input")?.focus();
+    dialog?.querySelector<HTMLElement>("input, button")?.focus();
     const keydown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
         setBatch(false);
+        setConfirmation(null);
       }
       if (e.key !== "Tab") return;
       const controls = Array.from(
@@ -343,7 +377,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
       document.removeEventListener("keydown", keydown);
       previous?.focus();
     };
-  }, [batch]);
+  }, [batch, confirmation]);
   const follow = (
     e: React.MouseEvent<HTMLAnchorElement>,
     v: string,
@@ -358,8 +392,31 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
     setEditingBatch(r ?? null);
     setEnrollmentLabel(r?.label ?? "");
     setEnrollmentCeiling(r?.ceiling ?? 1000);
-    setEnrollmentDays(7);
     setBatch(true);
+  }
+  async function groupAction(group: Row, action: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api(
+        `enrollment-batches/${group.id}/actions`,
+        "POST",
+        { action, operationId: crypto.randomUUID() },
+      );
+      const outcomes = Object.values(result.results) as string[];
+      const accepted = outcomes.filter((v) =>
+        ["queued", "completed"].includes(v),
+      ).length;
+      setNotice(
+        `${humanize(action)}: ${accepted} of ${outcomes.length} Macs ${["update", "uninstall", "collect"].includes(action) ? "queued" : "changed"}${accepted < outcomes.length ? ". View Requests → Group actions for skipped Macs." : "."}`,
+      );
+      await load();
+      setGroups((await api("enrollment-groups")).items);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
   async function script(
     path: string,
@@ -508,8 +565,8 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
             <div className="search">
               <Icon name="search" />
               <input
-                aria-label="Search serial, hostname, or assignment"
-                placeholder="Search serial, hostname, or assignment"
+                aria-label="Search serial, hostname, or group"
+                placeholder="Search serial, hostname, or group"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -549,7 +606,29 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
               {view === "logs" ? (
                 <>
                   <label>
-                    From
+                    Sort
+                    <select
+                      value={sort}
+                      onChange={(e) => setSort(e.target.value)}
+                    >
+                      <option value="session-newest">
+                        Session date · newest first
+                      </option>
+                      <option value="session-oldest">
+                        Session date · oldest first
+                      </option>
+                      <option value="received-newest">
+                        Received · newest first
+                      </option>
+                      <option value="received-oldest">
+                        Received · oldest first
+                      </option>
+                    </select>
+                  </label>
+                  <label>
+                    {sort.startsWith("session-")
+                      ? "Session from"
+                      : "Received from"}
                     <input
                       type="date"
                       value={from}
@@ -633,39 +712,78 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
             </button>
           </form>
         )}
+        {view === "enrollment" && (
+          <div className="filters">
+            <label>
+              Groups
+              <select value={state} onChange={(e) => setState(e.target.value)}>
+                <option value="">Open and closed</option>
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+                <option value="deleted">Deleted</option>
+              </select>
+            </label>
+          </div>
+        )}
+        {view === "requests" && (
+          <div className="filters">
+            <label>
+              Requests
+              <select
+                value={requestKind}
+                onChange={(e) => setRequestKind(e.target.value)}
+              >
+                <option value="collection">Collections</option>
+                <option value="management">Updates and uninstall</option>
+                <option value="groups">Group actions</option>
+              </select>
+            </label>
+          </div>
+        )}
         <div className="table-wrap">
-          <table>
+          <table className={view === "enrollment" ? "groups-table" : undefined}>
             <thead>
               <tr>
                 {(view === "fleet"
                   ? [
                       "Device",
-                      "Assignment",
+                      "Enrollment group",
                       "Versions",
                       "Last contact",
                       "Collection",
                       "State",
                     ]
                   : view === "logs"
-                    ? ["Source", "Device", "Received", "Size", "Expires", ""]
+                    ? ["Session date", "Device", "User", "Size", "Expires", ""]
                     : view === "enrollment"
-                      ? [
-                          "Enrollment",
-                          "Created",
-                          "Enrolled",
-                          "Expires",
-                          "State",
-                          "",
-                        ]
+                      ? ["Group", "Devices / limit", "State", ""]
                       : view === "requests"
-                        ? [
-                            "Device",
-                            "Requested range",
-                            "Created",
-                            "State",
-                            "Expires",
-                            "",
-                          ]
+                        ? requestKind === "management"
+                          ? [
+                              "Device",
+                              "Action",
+                              "Created",
+                              "State",
+                              "Result",
+                              "",
+                            ]
+                          : requestKind === "groups"
+                            ? [
+                                "Group",
+                                "Action",
+                                "Created",
+                                "State",
+                                "Results",
+                                "",
+                              ]
+                            : [
+                                "Device",
+                                "Requested range",
+                                "Created",
+                                "State",
+                                "Expires",
+                                "",
+                              ]
                         : view === "audit"
                           ? ["Time", "Actor", "Action", "Target", "Result"]
                           : ["Email", "Access", "Last sign-in", ""]
@@ -694,7 +812,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                         </button>
                       </td>
                       <td>
-                        {r.assignedLabel || "Unassigned"}
+                        {r.groupLabel || "No group"}
                         <small>{r.schoolEmail}</small>
                       </td>
                       <td>
@@ -722,12 +840,14 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                           className="row-link"
                           onClick={() => void open(r)}
                         >
-                          {r.source.basename}
-                          <small>{r.source.username}</small>
+                          {date(r.logStartedAt || r.source.mtime)}
+                          {r.logDateBasis === "modified" && (
+                            <small>File date</small>
+                          )}
                         </button>
                       </td>
-                      <td>{r.assignedLabel || r.serial}</td>
-                      <td>{date(r.acceptedAt ?? r.uploadedAt)}</td>
+                      <td>{r.deviceName || r.serial}</td>
+                      <td>{r.source.username}</td>
                       <td>{(r.gzipBytes / 1024).toFixed(1)} KiB</td>
                       <td>{date(r.expiresAt)}</td>
                       <td>
@@ -744,19 +864,15 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                     <>
                       <td>
                         <strong>{r.label || "Enrollment"}</strong>
-                        <br />
-                        <code>{r.id.slice(0, 12)}</code>
                       </td>
-                      <td>{date(r.createdAt)}</td>
                       <td>
                         {r.count} / {r.ceiling}
                       </td>
-                      <td>{date(r.expiresAt)}</td>
                       <td>{enrollmentState(r)}</td>
                       <td>
                         <div className="row-actions">
                           <button
-                            disabled={busy}
+                            disabled={busy || r.state === "deleted"}
                             onClick={() =>
                               void script(
                                 `enrollment-batches/${r.id}/installer`,
@@ -771,7 +887,46 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                           <button onClick={() => editEnrollment(r)}>
                             Edit
                           </button>
-                          {enrollmentState(r) === "Open" ? (
+                          {r.count > 0 && r.state !== "deleted" && (
+                            <select
+                              aria-label={`Manage ${r.label}`}
+                              value=""
+                              disabled={busy}
+                              onChange={(e) => {
+                                const action = e.target.value;
+                                setConfirmation({
+                                  title: `${humanize(e.target.value)} group`,
+                                  body: `Apply ${humanize(e.target.value).toLowerCase()} to ${r.count} enrolled Macs in “${r.label}”?${["revoke", "uninstall"].includes(e.target.value) ? " These Macs will need enrollment again." : ""}`,
+                                  run: () => void groupAction(r, action),
+                                });
+                              }}
+                            >
+                              <option value="">Manage Macs…</option>
+                              <option value="collect">Queue collection</option>
+                              <option value="pause">Pause</option>
+                              <option value="resume">Resume</option>
+                              <option value="update">Queue update</option>
+                              <option value="uninstall">Queue uninstall</option>
+                              <option value="revoke">Revoke</option>
+                            </select>
+                          )}
+                          {r.count === 0 && r.state !== "deleted" && (
+                            <button
+                              className="danger"
+                              disabled={busy}
+                              onClick={() =>
+                                void act(
+                                  `enrollment-batches/${r.id}`,
+                                  "PATCH",
+                                  { state: "deleted" },
+                                  "Group deleted. You can restore it from Deleted groups.",
+                                )
+                              }
+                            >
+                              Delete
+                            </button>
+                          )}
+                          {enrollmentState(r) === "Open" && r.count > 0 ? (
                             <button
                               onClick={() =>
                                 void act(
@@ -784,22 +939,107 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                             >
                               Close
                             </button>
-                          ) : (
+                          ) : r.state !== "open" ? (
                             <button
                               disabled={busy}
                               onClick={() =>
                                 void act(
                                   `enrollment-batches/${r.id}`,
                                   "PATCH",
-                                  { state: "open", days: 7 },
-                                  "Enrollment reopened for 7 days",
+                                  { state: "open" },
+                                  "Enrollment opened",
                                 )
                               }
                             >
-                              Reopen
+                              {r.state === "deleted" ? "Restore" : "Reopen"}
                             </button>
-                          )}
+                          ) : null}
                         </div>
+                      </td>
+                    </>
+                  ) : view === "requests" && requestKind === "management" ? (
+                    <>
+                      <td>
+                        <a
+                          href={`/fleet?selected=${r.deviceId}`}
+                          onClick={(e) =>
+                            follow(e, "fleet", `selected=${r.deviceId}`)
+                          }
+                        >
+                          {r.deviceLabel || r.deviceId}
+                        </a>
+                      </td>
+                      <td>
+                        {r.action === "update"
+                          ? `Update to ${r.version}`
+                          : "Uninstall"}
+                      </td>
+                      <td>{date(r.createdAt)}</td>
+                      <td>{humanize(r.state)}</td>
+                      <td>{humanize(r.result)}</td>
+                      <td>
+                        {["pending", "deferred"].includes(r.state) && (
+                          <button
+                            disabled={busy}
+                            onClick={() =>
+                              void act(
+                                `deviceCommands/${r.id}`,
+                                "DELETE",
+                                undefined,
+                                "Command cancelled",
+                              )
+                            }
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </td>
+                    </>
+                  ) : view === "requests" && requestKind === "groups" ? (
+                    <>
+                      <td>{r.groupLabel}</td>
+                      <td>{humanize(r.action)}</td>
+                      <td>{date(r.createdAt)}</td>
+                      <td>{humanize(r.state)}</td>
+                      <td>
+                        <details>
+                          <summary>
+                            {Object.keys(r.results ?? {}).length} /{" "}
+                            {r.members?.length ?? 0} Macs processed
+                          </summary>
+                          {Object.entries(r.results ?? {}).map(
+                            ([id, result]) => (
+                              <div key={id}>
+                                <a
+                                  href={`/fleet?selected=${id}`}
+                                  onClick={(e) =>
+                                    follow(e, "fleet", `selected=${id}`)
+                                  }
+                                >
+                                  {r.deviceNames?.[id] || id.slice(0, 12)}
+                                </a>{" "}
+                                · {humanize(String(result))}
+                              </div>
+                            ),
+                          )}
+                        </details>
+                      </td>
+                      <td>
+                        {r.state === "running" && (
+                          <button
+                            onClick={() =>
+                              void api(
+                                `enrollment-batches/${r.groupId}/actions`,
+                                "POST",
+                                { action: r.action, operationId: r.id },
+                              )
+                                .then(() => load())
+                                .catch((e) => setError(e.message))
+                            }
+                          >
+                            Continue
+                          </button>
+                        )}
                       </td>
                     </>
                   ) : view === "requests" ? (
@@ -905,7 +1145,9 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                 const cols = [
                   "id",
                   "serial",
-                  "assignedLabel",
+                  "deviceName",
+                  "logStartedAt",
+                  "logDateBasis",
                   "sourceUser",
                   "uploadedAt",
                   "acceptedAt",
@@ -1014,7 +1256,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
               <dl>
                 {[
                   ["Serial", detail.device.serial],
-                  ["Assignment", detail.device.assignedLabel],
+                  ["Enrollment group", detail.device.assignedLabel],
                   ["macOS version", detail.device.metadata?.macOSVersion],
                   ["SEB version", detail.device.metadata?.sebVersion],
                   ["Last contact", date(detail.device.lastSeenAt)],
@@ -1079,23 +1321,74 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                 <button
                   className="danger"
                   disabled={busy || !detail.device.activeInstallation}
-                  onClick={() => {
-                    if (
-                      confirm(
-                        "Revoke this device credential and cancel its pending requests?",
-                      )
-                    )
-                      void act(
-                        `devices/${selected.id}/revoke`,
-                        "POST",
-                        {},
-                        "Device revoked",
-                      );
-                  }}
+                  onClick={() =>
+                    setConfirmation({
+                      title: "Revoke device",
+                      body: "Revoke this device credential and cancel its pending requests? It will need enrollment again.",
+                      run: () =>
+                        void act(
+                          `devices/${selected.id}/revoke`,
+                          "POST",
+                          {},
+                          "Device revoked",
+                        ),
+                    })
+                  }
                 >
                   Revoke
                 </button>
               </div>
+              <div className="detail-actions">
+                <button
+                  disabled={
+                    busy ||
+                    !detail.device.activeInstallation ||
+                    detail.device.metadata?.managementProtocol !== 1 ||
+                    !!detail.device.pendingCommand
+                  }
+                  onClick={() =>
+                    void act(
+                      `devices/${selected.id}/commands`,
+                      "POST",
+                      { action: "update" },
+                      "Update queued for check-in",
+                    )
+                  }
+                >
+                  Queue update
+                </button>
+                <button
+                  className="danger"
+                  disabled={
+                    busy ||
+                    !detail.device.activeInstallation ||
+                    detail.device.metadata?.managementProtocol !== 1 ||
+                    !!detail.device.pendingCommand
+                  }
+                  onClick={() =>
+                    setConfirmation({
+                      title: "Uninstall from Mac",
+                      body: "Remove Safe Online Exam Logs at the next check-in? Access is revoked when removal starts. The Mac will need enrollment again.",
+                      run: () =>
+                        void act(
+                          `devices/${selected.id}/commands`,
+                          "POST",
+                          { action: "uninstall" },
+                          "Uninstall queued for check-in",
+                        ),
+                    })
+                  }
+                >
+                  Queue uninstall
+                </button>
+              </div>
+              {detail.device.activeInstallation &&
+                detail.device.metadata?.managementProtocol !== 1 && (
+                  <p className="muted">
+                    Install version 0.3.0 or newer once to enable remote updates
+                    and removal.
+                  </p>
+                )}
               <p className="muted request-timing">
                 Collection runs at the next check-in, usually within 30 minutes
                 while awake.
@@ -1105,17 +1398,33 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                   e.preventDefault();
                   const fd = new FormData(e.currentTarget);
                   void act(`devices/${selected.id}`, "PATCH", {
-                    assignedLabel: fd.get("label"),
+                    enrollmentGroupId: fd.get("group"),
                     schoolEmail: fd.get("email"),
                   });
                 }}
               >
                 <label>
-                  Assignment
-                  <input
-                    name="label"
-                    defaultValue={detail.device.assignedLabel}
-                  />
+                  Enrollment group
+                  <select
+                    name="group"
+                    required
+                    defaultValue={
+                      detail.device.enrollmentGroupId ??
+                      detail.device.enrollmentBatchId ??
+                      ""
+                    }
+                    key={`${detail.device.id}:${detail.device.enrollmentGroupId}`}
+                  >
+                    <option value="" disabled>
+                      Select a group
+                    </option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.label}
+                        {g.state === "closed" ? " (closed)" : ""}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label>
                   School email
@@ -1125,8 +1434,40 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                     defaultValue={detail.device.schoolEmail}
                   />
                 </label>
-                <button disabled={busy}>Save assignment</button>
+                <button disabled={busy}>Save device</button>
               </form>
+              {detail.commands?.length > 0 && (
+                <>
+                  <h3>Device commands</h3>
+                  {detail.commands.map((c: Row) => (
+                    <div className="history" key={c.id}>
+                      <strong>
+                        {c.action === "update"
+                          ? `Update to ${c.version}`
+                          : "Uninstall"}{" "}
+                        · {humanize(c.state)}
+                      </strong>
+                      <small>{date(c.createdAt)}</small>
+                      {c.result && <span>{humanize(c.result)}</span>}
+                      {["pending", "deferred"].includes(c.state) && (
+                        <button
+                          disabled={busy}
+                          onClick={() =>
+                            void act(
+                              `deviceCommands/${c.id}`,
+                              "DELETE",
+                              undefined,
+                              "Command cancelled",
+                            )
+                          }
+                        >
+                          Cancel command
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
               <h3>Collection history</h3>
               {detail.collections.length ? (
                 detail.collections.map((c: Row) => (
@@ -1231,6 +1572,32 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
           )}
         </aside>
       )}
+      {confirmation && (
+        <div className="modal-backdrop">
+          <section
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-title"
+          >
+            <h2 id="confirm-title">{confirmation.title}</h2>
+            <p>{confirmation.body}</p>
+            <div className="row-actions">
+              <button onClick={() => setConfirmation(null)}>Cancel</button>
+              <button
+                className="primary"
+                onClick={() => {
+                  const run = confirmation.run;
+                  setConfirmation(null);
+                  run();
+                }}
+              >
+                Confirm action
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
       {batch && (
         <div className="modal-backdrop">
           <section
@@ -1258,7 +1625,6 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                   const values = {
                     label: enrollmentLabel.trim(),
                     ceiling: enrollmentCeiling,
-                    days: enrollmentDays,
                   };
                   if (editingBatch)
                     await api(
@@ -1273,6 +1639,9 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                   );
                   if (view !== "enrollment") changeView("enrollment");
                   else await load();
+                  void api("enrollment-groups")
+                    .then((r) => setGroups(r.items))
+                    .catch((e) => setError(e.message));
                 } catch (err) {
                   setError((err as Error).message);
                 } finally {
@@ -1300,17 +1669,6 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                   value={enrollmentCeiling}
                   onChange={(e) => setEnrollmentCeiling(Number(e.target.value))}
                 />
-              </label>
-              <label>
-                Enrollment window
-                <select
-                  value={enrollmentDays}
-                  onChange={(e) => setEnrollmentDays(Number(e.target.value))}
-                >
-                  <option value={1}>1 day</option>
-                  <option value={3}>3 days</option>
-                  <option value={7}>7 days</option>
-                </select>
               </label>
               <p className="muted">
                 The same script enrolls every Mac you deploy it to. You can

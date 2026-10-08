@@ -1,3 +1,4 @@
+import { Management } from "./management";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { enrollmentInstaller } from "../components/enrollment";
@@ -79,16 +80,44 @@ export async function route(req: Request) {
     }
     if (group === "auth") return await oauth(req, version);
     const db = store(),
-      s = new Service(db);
+      s = new Service(db),
+      management = new Management(db, s);
     if (group === "device") {
       requireThat(version === "v1", 404, "not_found");
       if (resource === "enroll" && req.method === "POST")
         out = json(await s.enroll(bearer(req), await body(req)));
       else {
-        const d = await device(req, db);
+        const d = await device(
+          req,
+          db,
+          resource === "commands" && action === "ack" && req.method === "POST"
+            ? id
+            : undefined,
+        );
         if (id) validId(id);
-        if (resource === "config" && req.method === "GET")
-          out = json(await s.deviceConfig(d));
+        if (resource === "config" && req.method === "GET") {
+          if (req.headers.get("x-collector-management") === "1") {
+            d.metadata = { ...d.metadata, managementProtocol: 1 };
+            await db.transaction(async (tx) => {
+              const current = await tx.get(`devices/${d.id}`);
+              if (current?.activeInstallation === d.installationId)
+                tx.set(`devices/${d.id}`, {
+                  ...current,
+                  metadata: { ...current!.metadata, managementProtocol: 1 },
+                });
+            });
+          }
+          const [settings, commands] = await Promise.all([
+            s.deviceConfig(d),
+            management.commands(d),
+          ]);
+          out = json({ ...settings, commands });
+        } else if (
+          resource === "commands" &&
+          action === "ack" &&
+          req.method === "POST"
+        )
+          out = json(await management.acknowledge(d, id, await body(req)));
         else if (resource === "collections" && req.method === "POST")
           out = json(await s.collection(d, await body(req)));
         else if (
@@ -211,45 +240,87 @@ export async function route(req: Request) {
           "auditEvents",
           "enrollmentBatches",
           "admins",
+          "deviceCommands",
+          "groupOperations",
         ].includes(resource) &&
         !id &&
         req.method === "GET"
       )
         out = json(await s.list(resource, url));
+      else if (resource === "enrollment-groups" && req.method === "GET")
+        out = json(await management.groups());
+      else if (resource === "deviceCommands" && id && req.method === "DELETE")
+        out = json(await management.cancel(a.email, id));
+      else if (
+        resource === "devices" &&
+        action === "commands" &&
+        req.method === "POST"
+      )
+        out = json(await management.queue(a.email, id, await body(req)), 201);
+      else if (
+        resource === "enrollment-batches" &&
+        action === "actions" &&
+        req.method === "POST"
+      )
+        out = json(await management.bulk(a.email, id, await body(req)));
       else if (resource === "devices" && id && req.method === "GET") {
         const d = await db.get(`devices/${id}`);
         requireThat(d, 404, "device_not_found");
-        const [collections, logs, requests] = await Promise.all([
-          db.query(
-            "collections",
-            [["deviceId", "==", id]],
-            "receivedAt",
-            undefined,
-            50,
-            "desc",
-          ),
-          db.query(
-            "logs",
-            [["deviceId", "==", id]],
-            "acceptedAt",
-            undefined,
-            50,
-            "desc",
-          ),
-          db.query(
-            "collectionRequests",
-            [["deviceId", "==", id]],
-            "createdAt",
-            undefined,
-            50,
-            "desc",
-          ),
-        ]);
+        const [collections, logs, requests, commands, group] =
+          await Promise.all([
+            db.query(
+              "collections",
+              [["deviceId", "==", id]],
+              "receivedAt",
+              undefined,
+              50,
+              "desc",
+            ),
+            db.query(
+              "logs",
+              [["deviceId", "==", id]],
+              "logStartedAt",
+              undefined,
+              50,
+              "desc",
+            ),
+            db.query(
+              "collectionRequests",
+              [["deviceId", "==", id]],
+              "createdAt",
+              undefined,
+              50,
+              "desc",
+            ),
+            db.query(
+              "deviceCommands",
+              [["deviceId", "==", id]],
+              "createdAt",
+              undefined,
+              50,
+              "desc",
+            ),
+            db.get(
+              `enrollmentBatches/${d.enrollmentGroupId ?? d.enrollmentBatchId}`,
+            ),
+          ]);
         out = json({
-          device: d,
+          device: {
+            ...d,
+            groupLabel: group?.label,
+            pendingCommand: commands.some(
+              (c) =>
+                c.id === d.pendingCommand &&
+                c.expiresAt > now() &&
+                !["completed", "cancelled", "failed"].includes(c.state),
+            )
+              ? d.pendingCommand
+              : null,
+          },
           collections: collections.filter(alive),
           logs: logs.filter(alive),
           requests: requests.filter(alive),
+          commands,
         });
       } else if (resource === "scripts" && id && req.method === "GET") {
         const names: Record<string, string> = {
@@ -339,32 +410,7 @@ export async function route(req: Request) {
         });
         out = json({ id: requestId, state: "pending", expiresAt }, 201);
       } else if (resource === "devices" && id && req.method === "PATCH") {
-        const b = z
-          .object({
-            state: z.enum(["active", "paused"]).optional(),
-            assignedLabel: z.string().max(200).optional(),
-            schoolEmail: z.union([z.email(), z.literal("")]).optional(),
-            jamfId: z.string().max(200).optional(),
-          })
-          .strict()
-          .parse(await body(req));
-        await db.transaction(async (tx) => {
-          const d = await tx.get(`devices/${id}`);
-          requireThat(d, 404, "device_not_found");
-          requireThat(d.activeInstallation || !b.state, 409, "device_inactive");
-          tx.set(`devices/${id}`, {
-            ...d,
-            ...b,
-            searchTokens: searchTokens(
-              d.serial,
-              b.assignedLabel ?? d.assignedLabel,
-              b.schoolEmail ?? d.schoolEmail,
-              d.metadata?.hostName,
-            ),
-          });
-          audit(tx, a.email, b.state ?? "update_assignment", id);
-        });
-        out = json({ updated: true });
+        out = json(await management.updateDevice(a.email, id, await body(req)));
       } else if (
         resource === "devices" &&
         action === "revoke" &&
@@ -471,6 +517,7 @@ export async function route(req: Request) {
               id: lid,
               method: "manual",
               acceptedAt: l.acceptedAt,
+              logStartedAt: l.logStartedAt,
               creator: a.email,
               createdAt: now(),
               expiresAt: l.expiresAt,

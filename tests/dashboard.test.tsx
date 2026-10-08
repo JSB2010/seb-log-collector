@@ -176,7 +176,7 @@ it("discards a late device detail response after selecting a log", async () => {
     gzipBytes: 100,
   };
   await finish("logs", [log]);
-  await click("synthetic.logfixture");
+  await click("—");
   await act(async () => {
     pending.get("logs/log-a")!.shift()!.resolve(reply(log));
     pending
@@ -263,4 +263,31 @@ it("renders readable device activity and provides an exact device log link", asy
   );
   expect(location.pathname).toBe("/logs");
   expect(location.search).toContain("deviceId=device-a");
+});
+
+it("uses an in-app confirmation for group actions and closes it with Escape", async () => {
+  await navigate("Enrollment");
+  await finish("enrollmentBatches", [{ ...enrollment, count: 2 }]);
+  const select = container.querySelector<HTMLSelectElement>(
+    'select[aria-label="Manage Pilot batch"]',
+  )!;
+  await act(async () => {
+    select.value = "uninstall";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(container.querySelector('[role="dialog"]')?.textContent).toContain(
+    "2 enrolled Macs",
+  );
+  expect(container.querySelector('[role="dialog"]')?.textContent).toContain(
+    "need enrollment again",
+  );
+  await act(async () => {
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+  });
+  expect(container.querySelector('[role="dialog"]')).toBeNull();
+  expect(pending.has(`enrollment-batches/${enrollment.id}/actions`)).toBe(
+    false,
+  );
 });

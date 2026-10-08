@@ -2,15 +2,15 @@
 
 ## Install and enroll
 
-1. Open **Enrollment → Create enrollment**. Enter a rollout or group name, maximum device count (up to 1,000), and a one-, three-, or seven-day window.
+1. Open **Enrollment → Create enrollment**. Enter a rollout or group name, maximum device count (up to 1,000).
 2. Select **Download script**. Paste the complete readable script into Jamf School with its scripting module enabled. Run as root, once per device, scoped initially to a restricted pilot.
 3. Confirm the Macs appear in Fleet and report successful collection before expanding the scope. Close enrollment when rollout finishes.
 
-Every Mac executing the script registers automatically with its own permanent credential. No serial list or Jamf API access is required. The name is an assignment label; delivery scope, the time window, and the registration ceiling control enrollment. The same script can be used across the intended devices and downloaded again. Existing installations reconcile without consuming another slot. Enrollment history is retained for 90 days; reopening or extending its window renews that retention. **Reopen** extends the same enrollment for seven days; **Edit** changes its name, ceiling, or window without resetting its enrolled count.
+Every Mac executing the script registers automatically with its own permanent credential. No serial list or Jamf API access is required. The name identifies an enrollment group; delivery scope and the current-member ceiling control enrollment. The same script can be used across the intended devices and downloaded again. Existing installations reconcile without consuming another slot. Groups remain open until you close them. **Reopen** restores availability, **Edit** changes the name or ceiling, and **Delete** removes an empty group from the current list. Deleted groups can be restored using the Deleted filter. Device details select membership from the group dropdown. **Manage Macs…** applies bulk pause, resume, revoke, collection, update or removal to the current members.
 
-The complete installer source is in the script as readable quoted heredocs, with checksum and syntax validation before replacement. No base64-packed executable payload or installer-code download is used. The operational copy contains the configured origin and temporary bootstrap; keep it in restricted IT/Jamf storage. Generic public releases contain neither credentials nor a deployment origin.
+The complete installer source is in the script as readable quoted heredocs, with checksum and syntax validation before replacement. No base64-packed executable payload or installer-code download is used. The operational copy contains the configured origin and group bootstrap; keep it in restricted IT/Jamf storage. Generic public releases contain neither credentials nor a deployment origin.
 
-An offline install records pending enrollment privately and starts the daemon to retry. Source scanning starts only after enrollment and fresh server permission. The bootstrap is removed after acknowledgment or seven days locally; the server’s shorter window still applies. A lost enrollment response can reconcile with the saved permanent credential after bootstrap expiry. An initially pending enrollment returns failure to Jamf, so inspect the eventual Fleet record before declaring success.
+An offline install records pending enrollment privately and starts the daemon to retry. Source scanning starts only after enrollment and fresh server permission. The bootstrap is removed after acknowledgment. Pending installation can retry while the group remains open. A lost enrollment response can reconcile with the saved permanent credential even after the group closes. An initially pending enrollment returns failure to Jamf, so inspect the eventual Fleet record before declaring success.
 
 ## Local commands
 
@@ -56,3 +56,15 @@ Server operators should add the descending Firestore indexes before switching tr
 ## Pilot checks
 
 Verify actual Jamf/launchd execution, standard and multiple users, relevant macOS versions and architectures, privacy access, SEB exam deferral, sleep/wake, offline retries, update preservation, and offline removal. Native fixtures and a successful cloud upload are separate evidence from a managed fleet pilot. Custom log directories and device-specific limit overrides require explicit implementation and testing.
+
+## Remote update and removal without Jamf
+
+Install 0.3.0 or newer once on existing Macs (use their **Update.command** or the dashboard’s generic Jamf Update script). After that, **Fleet → device → Queue update / Queue uninstall** and **Enrollment → Manage Macs…** deliver typed commands at the next check-in. Pausing collection does not stop management check-in. Safe Exam Browser activity defers lifecycle changes. Requests → Updates and uninstall shows device results; Requests → Group actions shows bulk outcomes. Offline Macs remain queued, and completion is shown only after a Mac reports success.
+
+Update downloads the exact server-approved HTTPS release, checks SHA-256 and shell syntax, refuses downgrades and preserves credentials/configuration/pause/ledger/staging. A separate transient launchd worker survives replacement of the collector’s own job. It removes its private temporary credentials after bounded execution. Reinstall is offline repair of the current version. The installed collector does not silently auto-update unless IT queues an update.
+
+Remote uninstall revokes access when the Mac claims the command, then removes only the collector’s fixed project paths. It reports success after verifying removal. If the network fails after removal, the server may show completion unconfirmed: it cannot contact a removed daemon. Failed removal may require local repair/removal and re-enrollment because the credential is already revoked. No uninstall is performed on a real pilot Mac merely to validate a release; use a disposable test installation.
+
+## Server upgrade to 0.3.0
+
+Apply the new Firestore indexes and remove enrollment-group/token TTL policies before switching traffic. Run `GCP_ACCOUNT=your-account GCP_PROJECT=your-project node deployment/migrate-030.mjs`, review the dry-run counts, then repeat with `--apply`. The preconditioned atomic migration sets current group membership/counts, clears old enrollment expiry/TTL and backfills session dates without extending log retention. It refuses more than 450 changed documents; larger existing fleets need a staged migration during a maintenance window. Keep old received-date indexes for rollback. Versioned update artifacts must remain available for the seven-day lifetime of queued commands, even after publishing a newer release.

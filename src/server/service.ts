@@ -1,3 +1,4 @@
+import { logDate } from "./log-date";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { config } from "./config";
@@ -101,10 +102,7 @@ export class Service {
         return { deviceId, schemaVersion: 1 };
       }
       requireThat(
-        batch &&
-          batch.bootstrapHash === codeHash &&
-          batch.state === "open" &&
-          alive(batch),
+        batch && batch.bootstrapHash === codeHash && batch.state === "open",
         403,
         "bootstrap_closed",
       );
@@ -124,7 +122,9 @@ export class Service {
         assignedLabel: batch.label ?? "",
         schoolEmail: d?.schoolEmail ?? "",
         jamfId: d?.jamfId ?? "",
-        enrollmentBatchId: batchId,
+        enrollmentBatchId: d?.enrollmentBatchId ?? batchId,
+        enrollmentGroupId: batchId,
+        pendingCommand: null,
         activeInstallation: b.installationId,
         state: "active",
         retiredAt: null,
@@ -424,6 +424,7 @@ export class Service {
       const l = {
         ...u,
         ...verified,
+        ...logDate(u.source, u.metadata?.timezone),
         state: "accepted",
         acceptedAt: now(),
         expiresAt,
@@ -485,13 +486,28 @@ export class Service {
       return { state: b.state };
     });
   }
-  async revoke(d: Doc, actor: string) {
+  async revoke(d: Doc, actor: string, expectedGroup?: string) {
     await this.db.transaction(async (tx) => {
       const dev = await tx.get(`devices/${d.id}`);
       requireThat(dev, 404, "device_not_found");
+      requireThat(
+        !expectedGroup ||
+          (dev.enrollmentGroupId ?? dev.enrollmentBatchId) === expectedGroup,
+        409,
+        "group_changed",
+      );
       const i = dev.activeInstallation
         ? await tx.get(`installations/${dev.activeInstallation}`)
         : undefined;
+      const groupId = dev.enrollmentGroupId ?? dev.enrollmentBatchId;
+      const group = groupId
+        ? await tx.get(`enrollmentBatches/${groupId}`)
+        : undefined;
+      if (group && dev.activeInstallation)
+        tx.set(`enrollmentBatches/${groupId}`, {
+          ...group,
+          count: Math.max(0, group.count - 1),
+        });
       tx.set(`devices/${d.id}`, {
         ...dev,
         state: "revoked",
@@ -525,7 +541,7 @@ export class Service {
     const b = schema.batch.parse(input),
       code = secret(),
       id = sha(code),
-      expiresAt = expiry(b.days);
+      expiresAt = null;
     await this.db.transaction(async (tx) => {
       tx.set(`enrollmentBatches/${id}`, {
         id,
@@ -539,7 +555,7 @@ export class Service {
         ceiling: b.ceiling,
         count: 0,
         state: "open",
-        ttlAt: new Date(expiry(90)),
+        ttlAt: null,
       });
       audit(tx, a.email, "create_batch", id);
     });
@@ -561,6 +577,11 @@ export class Service {
         400,
         "limit_below_enrolled_count",
       );
+      requireThat(
+        b.state !== "deleted" || batch.count === 0,
+        409,
+        "group_has_devices",
+      );
       const reopened = b.state === "open";
       tx.set(`enrollmentBatches/${id}`, {
         ...batch,
@@ -568,25 +589,26 @@ export class Service {
         ...(b.ceiling !== undefined ? { ceiling: b.ceiling } : {}),
         ...(b.state ? { state: b.state } : {}),
         mode: "automatic",
-        ...(reopened || b.days
-          ? { expiresAt: expiry(b.days ?? 7), ttlAt: new Date(expiry(90)) }
-          : {}),
+        expiresAt: null,
+        ttlAt: null,
         updatedAt: now(),
       });
-      if ((reopened || b.days) && batch.bootstrapHash !== id)
+      if (batch.bootstrapHash !== id)
         tx.set(`enrollmentTokens/${batch.bootstrapHash}`, {
           id: batch.bootstrapHash,
           batchId: id,
-          ttlAt: new Date(expiry(90)),
+          ttlAt: null,
         });
       audit(
         tx,
         a.email,
         reopened
           ? "reopen_batch"
-          : b.state === "closed"
-            ? "close_batch"
-            : "update_batch",
+          : b.state === "deleted"
+            ? "delete_batch"
+            : b.state === "closed"
+              ? "close_batch"
+              : "update_batch",
         id,
       );
       return { updated: true };
@@ -596,6 +618,7 @@ export class Service {
     return this.db.transaction(async (tx) => {
       const batch = await tx.get(`enrollmentBatches/${id}`);
       requireThat(batch, 404, "batch_not_found");
+      requireThat(batch.state !== "deleted", 410, "group_deleted");
       let code: string;
       if (batch.encryptedBootstrap)
         code = openBootstrap(batch.encryptedBootstrap);
@@ -607,7 +630,7 @@ export class Service {
         tx.set(`enrollmentTokens/${hash}`, {
           id: hash,
           batchId: id,
-          ttlAt: new Date(expiry(90)),
+          ttlAt: null,
         });
         tx.set(`enrollmentBatches/${id}`, {
           ...batch,
@@ -623,11 +646,16 @@ export class Service {
     });
   }
   async list(kind: string, url: URL) {
+    const postFilters: [string, string][] = [];
     const f: [string, string, unknown][] = [],
+      sort = url.searchParams.get("sort") ?? "session-newest",
+      direction = kind === "logs" && sort.endsWith("oldest") ? "asc" : "desc",
       order =
         (
           {
-            logs: "acceptedAt",
+            logs: sort.startsWith("received-") ? "acceptedAt" : "logStartedAt",
+            deviceCommands: "createdAt",
+            groupOperations: "createdAt",
             devices: "lastSeenAt",
             collections: "receivedAt",
             collectionRequests: "createdAt",
@@ -636,43 +664,23 @@ export class Service {
             admins: "createdAt",
           } as Record<string, string>
         )[kind] ?? "id";
+    if (kind === "logs")
+      requireThat(
+        [
+          "session-newest",
+          "session-oldest",
+          "received-newest",
+          "received-oldest",
+        ].includes(sort),
+        400,
+        "invalid_sort",
+      );
+    if (kind === "enrollmentBatches" && !url.searchParams.has("state"))
+      f.push(["state", "in", ["open", "closed"]]);
     if (kind === "devices") {
       const range = url.searchParams.get("lastContact");
       if (range === "recent") f.push(["lastSeenAt", ">=", expiry(-1)]);
       else if (range === "stale") f.push(["lastSeenAt", "<=", expiry(-2)]);
-    }
-    if (kind === "logs" && url.searchParams.has("session")) {
-      const session = z
-          .string()
-          .min(1)
-          .max(200)
-          .parse(url.searchParams.get("session")),
-        instance = z
-          .string()
-          .min(1)
-          .max(80)
-          .parse(url.searchParams.get("instance"));
-      const links = await this.db.query(
-          "sessionLinks",
-          [
-            ["instance", "==", instance],
-            ["session", "==", session],
-          ],
-          "acceptedAt",
-          url.searchParams.get("cursor") ?? undefined,
-          50,
-          "desc",
-        ),
-        items = [];
-      for (const link of links) {
-        const l = await this.db.get(`logs/${link.logId}`);
-        if (alive(link) && l && alive(l)) items.push(l);
-      }
-      return {
-        items,
-        nextCursor:
-          links.length === 50 ? pageCursor(links.at(-1), "acceptedAt") : null,
-      };
     }
     const query = url.searchParams.get("q");
     if (query && ["logs", "devices"].includes(kind)) {
@@ -686,8 +694,14 @@ export class Service {
     for (const field of ["deviceId", "sourceUser", "state"]) {
       const v = url.searchParams.get(field);
       if (v) {
+        if (kind === "logs" && field === "state") {
+          requireThat(v === "accepted", 400, "invalid_state");
+          continue;
+        }
         requireThat(v.length <= 100, 400, "filter_too_long");
-        f.push([field, "==", v]);
+        if (kind === "logs" && field === "sourceUser")
+          postFilters.push([field, v]);
+        else f.push([field, "==", v]);
       }
     }
     for (const [param, field] of [
@@ -696,22 +710,96 @@ export class Service {
       ["collector", "metadata.collectorVersion"],
     ] as const) {
       const v = url.searchParams.get(param);
-      if (v) f.push([field, "==", v]);
+      if (v) {
+        if (kind === "logs" && param === "collector")
+          postFilters.push([field, v]);
+        else f.push([field, "==", v]);
+      }
+    }
+    if (kind === "logs" && url.searchParams.has("session")) {
+      const session = z
+          .string()
+          .min(1)
+          .max(200)
+          .parse(url.searchParams.get("session")),
+        instance = z
+          .string()
+          .min(1)
+          .max(80)
+          .parse(url.searchParams.get("instance"));
+      const from = url.searchParams.get("from") ?? expiry(-7),
+        to = url.searchParams.get("to") ?? now();
+      schema.when.parse(from);
+      schema.when.parse(to);
+      const links = await this.db.query(
+          "sessionLinks",
+          [
+            ["instance", "==", instance],
+            ["session", "==", session],
+            [order, ">=", from],
+            [order, "<=", to],
+          ],
+          order,
+          url.searchParams.get("cursor") ?? undefined,
+          50,
+          direction,
+        ),
+        items: Doc[] = [];
+      for (const link of links) {
+        const l = await this.db.get(`logs/${link.logId}`);
+        const value = (field: string) =>
+          field.split(".").reduce<any>((v, key) => v?.[key], l);
+        if (
+          alive(link) &&
+          l &&
+          alive(l) &&
+          f.every(([field, op, wanted]) =>
+            op === "array-contains"
+              ? value(field)?.includes(wanted)
+              : value(field) === wanted,
+          ) &&
+          postFilters.every(([field, wanted]) => value(field) === wanted)
+        ) {
+          const dev = await this.db.get(`devices/${l.deviceId}`);
+          items.push({
+            ...l,
+            deviceName:
+              dev?.metadata?.computerName ||
+              dev?.metadata?.hostName ||
+              l.serial,
+          });
+        }
+      }
+      return {
+        items,
+        nextCursor:
+          links.length === 50 ? pageCursor(links.at(-1), order) : null,
+      };
     }
     if (kind === "logs") {
       const from = url.searchParams.get("from") ?? expiry(-7),
         to = url.searchParams.get("to") ?? now();
       schema.when.parse(from);
       schema.when.parse(to);
-      f.push(["acceptedAt", ">=", from], ["acceptedAt", "<=", to]);
+      f.push([order, ">=", from], [order, "<=", to]);
     }
     const cursor = url.searchParams.get("cursor") ?? undefined;
     if (cursor) requireThat(cursor.length < 2048, 400, "invalid_cursor");
-    const rows = await this.db.query(kind, f, order, cursor, 50, "desc");
+    const rows = await this.db.query(kind, f, order, cursor, 50, direction);
     const items = rows
+      .filter((r) =>
+        postFilters.every(
+          ([field, value]) =>
+            field.split(".").reduce<any>((v, key) => v?.[key], r) === value,
+        ),
+      )
       .filter(
         (r) =>
-          ["enrollmentBatches", "collectionRequests"].includes(kind) ||
+          [
+            "enrollmentBatches",
+            "collectionRequests",
+            "deviceCommands",
+          ].includes(kind) ||
           !r.expiresAt ||
           alive(r),
       )
@@ -736,12 +824,31 @@ export class Service {
         );
       return labels.get(path)!;
     };
-    if (kind === "collectionRequests")
+    if (kind === "logs")
+      await Promise.all(
+        items.map(async (r) => {
+          r.deviceName = (await label(`devices/${r.deviceId}`)) || r.serial;
+        }),
+      );
+    if (kind === "devices")
+      await Promise.all(
+        items.map(async (r) => {
+          r.enrollmentGroupId ??= r.enrollmentBatchId;
+          r.groupLabel = r.enrollmentGroupId
+            ? await label(`enrollmentBatches/${r.enrollmentGroupId}`)
+            : undefined;
+        }),
+      );
+    if (["collectionRequests", "deviceCommands"].includes(kind))
       await Promise.all(
         items.map(async (r) => {
           r.deviceLabel = await label(`devices/${r.deviceId}`);
+          if (kind === "deviceCommands" && r.state === "running" && !alive(r))
+            r.state = "unconfirmed";
           if (
-            ["pending", "delivered", "accepted"].includes(r.state) &&
+            ["pending", "delivered", "accepted", "deferred"].includes(
+              r.state,
+            ) &&
             !alive(r)
           )
             r.state = "expired";

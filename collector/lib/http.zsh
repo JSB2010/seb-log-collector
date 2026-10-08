@@ -8,7 +8,7 @@ http() {
   [[ $route == /api/device/v1/* && $route != *[$'\n\r "\\']* ]] || return 1
   token="$(json_value "$CREDS" installationId).$(json_value "$CREDS" secret)"
   [[ $token == [0-9a-f-]##.[A-Za-z0-9_-]## ]] || return 1
-  : > "$cfg"; curl_option "$cfg" url "$API_ORIGIN$route"; curl_option "$cfg" header "Authorization: Bearer $token"; curl_option "$cfg" header 'Content-Type: application/json'; curl_option "$cfg" request "$method"; curl_option "$cfg" output "$out"
+  : > "$cfg"; curl_option "$cfg" url "$API_ORIGIN$route"; curl_option "$cfg" header "Authorization: Bearer $token"; curl_option "$cfg" header 'Content-Type: application/json'; curl_option "$cfg" header 'X-Collector-Management: 1'; curl_option "$cfg" request "$method"; curl_option "$cfg" output "$out"
   if [[ -n $body ]]; then print -rn -- "$body" > "$bodyfile"; curl_option "$cfg" data-binary "@$bodyfile"; fi
   HTTP_CODE=$(/usr/bin/curl -q --config "$cfg" --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time "$max" --max-filesize 262144 --write-out '%{http_code}' 2>/dev/null) || { HTTP_CODE=000; return 1; }
   HTTP_RESPONSE=$out

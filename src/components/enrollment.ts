@@ -20,6 +20,6 @@ export function enrollmentInstaller(
     .replace(marker, `API_ORIGIN='${origin}'`)
     .replace(
       start,
-      `# BEGIN ENROLLMENT BOOTSTRAP\n# Deliver only to the intended devices. Closing the enrollment disables new registrations.\nif ! print -rn -- '${code}' | /bin/zsh -f "$ROOT/bin/soe-diagnostics" enroll --bootstrap-stdin; then\n  ${start}\n  print -u2 'Enrollment pending; the daemon retries within the enrollment window.'\n  exit 1\nfi\n# END ENROLLMENT BOOTSTRAP\n${start}`,
+      `# BEGIN ENROLLMENT BOOTSTRAP\n# Deliver only to the intended devices. Closing the enrollment disables new registrations.\nif ! print -rn -- '${code}' | /bin/zsh -f "$ROOT/bin/soe-diagnostics" enroll --bootstrap-stdin; then\n  ${start}\n  print -u2 'Enrollment pending; the daemon retries while the enrollment is open.'\n  exit 1\nfi\n# END ENROLLMENT BOOTSTRAP\n${start}`,
     );
 }

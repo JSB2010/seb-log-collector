@@ -1,18 +1,21 @@
 #!/bin/zsh -f
 emulate -LR zsh
-setopt ERR_EXIT NO_UNSET PIPE_FAIL
+setopt ERR_EXIT NO_UNSET PIPE_FAIL EXTENDED_GLOB
+TRAPZERR() { print -u2 -- "Native tools fixture failed at ${funcfiletrace[1]:-unknown}"; }
 typeset project=${0:A:h:h}
-typeset fixture="$project/.local/fixture-home" root="$project/.local/collector-test"
+typeset lab=$(/usr/bin/mktemp -d "$project/.local/native-tools.XXXXXXXX")
+trap '/bin/rm -rf "$lab"' EXIT
+typeset fixture="$lab/fixture-home" root="$lab/.local/collector-test"
 /bin/mkdir -p "$fixture/Library/Logs/Safe Exam Browser" "$root/bin/lib" "$root/state" "$root/staging" "$root/credentials"
 /bin/cp "$project/collector/soe-diagnostics" "$root/bin/soe-diagnostics"
 /bin/cp "$project/collector/read-source" "$root/bin/read-source"
 /bin/cp "$project"/collector/lib/*.zsh "$root/bin/lib/"
 print -r -- '{"apiOrigin":"https://diagnostics.example.org"}' > "$root/config.json"
-SOE_TEST_MODE=1 SOE_TEST_ROOT="$root" /bin/zsh -f "$root/bin/soe-diagnostics" status --json > "$project/.local/status-test.json"
-[[ $(/usr/bin/plutil -extract enrolled raw -o - "$project/.local/status-test.json") == false ]]
+SOE_TEST_MODE=1 SOE_TEST_ROOT="$root" /bin/zsh -f "$root/bin/soe-diagnostics" status --json > "$lab/status-test.json"
+[[ $(/usr/bin/plutil -extract enrolled raw -o - "$lab/status-test.json") == false ]]
 print -r -- 'Synthetic source bytes: apostrophe '\'' quote " spaces and <script>inert</script>' > "$fixture/Library/Logs/Safe Exam Browser/safe fixture.log"
-/bin/zsh -f "$project/collector/read-source" read "$fixture" "$EUID" 0 9999999999 'safe fixture.log' > "$project/.local/snapshot-test.log"
-/usr/bin/cmp "$fixture/Library/Logs/Safe Exam Browser/safe fixture.log" "$project/.local/snapshot-test.log"
+/bin/zsh -f "$project/collector/read-source" read "$fixture" "$EUID" 0 9999999999 'safe fixture.log' > "$lab/snapshot-test.log"
+/usr/bin/cmp "$fixture/Library/Logs/Safe Exam Browser/safe fixture.log" "$lab/snapshot-test.log"
 /bin/ln -sf 'safe fixture.log' "$fixture/Library/Logs/Safe Exam Browser/link.log"
 if /bin/zsh -f "$project/collector/read-source" read "$fixture" "$EUID" 0 9999999999 link.log >/dev/null 2>&1; then print -u2 'Symlink accepted'; exit 1; fi
 /bin/rm -f "$fixture/Library/Logs/Safe Exam Browser/link.log"
@@ -22,8 +25,8 @@ if /bin/zsh -f "$project/collector/read-source" read "$fixture" "$EUID" 0 999999
 /usr/bin/mkfifo "$fixture/Library/Logs/Safe Exam Browser/fifo.log"
 if /bin/zsh -f "$project/collector/read-source" read "$fixture" "$EUID" 0 9999999999 fifo.log >/dev/null 2>&1; then print -u2 'FIFO accepted'; exit 1; fi
 /bin/rm -f "$fixture/Library/Logs/Safe Exam Browser/fifo.log"
-/usr/bin/gzip -n -1 -c "$project/.local/snapshot-test.log" > "$project/.local/snapshot-test.gz"
-/usr/bin/gzip -dc "$project/.local/snapshot-test.gz" | /usr/bin/cmp - "$project/.local/snapshot-test.log"
+/usr/bin/gzip -n -1 -c "$lab/snapshot-test.log" > "$lab/snapshot-test.gz"
+/usr/bin/gzip -dc "$lab/snapshot-test.gz" | /usr/bin/cmp - "$lab/snapshot-test.log"
 # Exercise schema creation, SQL escaping and secret-free status on real SQLite/plutil.
 SOE_TEST_MODE=1 SOE_TEST_ROOT="$root" /bin/zsh -f "$root/bin/soe-diagnostics" tick
 [[ $(/usr/bin/sqlite3 "$root/state/ledger.sqlite" 'PRAGMA user_version;') == 1 ]]
@@ -63,7 +66,7 @@ SOE_TEST_MODE=1 rotate_logs
 [[ $(/usr/bin/stat -f '%z' "$ROOT/logs/collector.log") == 0 ]]
 [[ $(/usr/bin/stat -f '%z' "$ROOT/logs/collector.1.log") == 2097152 ]]
 /bin/rm -rf "$WORK"
-# Pending enrollment is bounded, retries its exact code, and expires locally.
+# Open enrollment retries the same private code until accepted or explicitly closed.
 source "$project/collector/lib/enrollment.zsh"
 typeset pending="$STATE/enrollment-bootstrap"
 print -rn -- 'synthetic-pending-code' > "$pending"
@@ -71,6 +74,32 @@ enroll() { [[ $(/bin/cat) == 'synthetic-pending-code' ]]; return 1; }
 if retry_enrollment; then print -u2 'Pending enrollment unexpectedly succeeded'; exit 1; fi
 [[ -f $pending ]]
 touch -t 200001010000 "$pending"
-if retry_enrollment; then print -u2 'Expired bootstrap retried'; exit 1; fi
-[[ ! -f $pending && $(<"$STATE/outcome") == bootstrap_expired ]]
-print 'macOS tool checks passed: JSON, stable FD snapshot, spaces, symlinks, hard links, FIFO rejection, gzip, ledger, unenrolled tick, report recovery/failed ack, request replay, log rotation, bounded pending enrollment, plist.'
+if retry_enrollment; then print -u2 'Pending enrollment unexpectedly succeeded'; exit 1; fi
+[[ -f $pending ]]
+/bin/rm -f "$pending"
+# Pausing collection must not prevent lifecycle commands from reaching the Mac.
+source "$project/collector/lib/management.zsh"
+WORK=$(/usr/bin/mktemp -d "$STATE/test-control.XXXXXXXX")
+typeset CREDS="$ROOT/credentials/device.json" controls=0 deferred=0
+print '{"deviceId":"fixture"}' > "$CREDS"
+print paused > "$STATE/paused"
+http() {
+  HTTP_CODE=200; HTTP_RESPONSE="$WORK/control.json"
+  if [[ $1 == GET && $2 == /api/device/v1/config ]]; then
+    controls=$((controls+1))
+    print '{"paused":true,"commands":[{"id":"00000000-0000-4000-a000-000000000001","action":"update"}]}' > "$HTTP_RESPONSE"
+  elif [[ $2 == */ack ]]; then
+    [[ $3 == '{"state":"deferred","result":"busy"}' ]]
+    deferred=$((deferred+1))
+  else return 1; fi
+}
+seb_running() { return 0; }
+tick tick
+[[ $controls == 1 && $deferred == 1 && $(<"$STATE/outcome") == deferred ]]
+typeset managed=0
+seb_running() { return 1; }
+management_command() { managed=$((managed+1)); return 0; }
+tick tick
+[[ $controls == 2 && $managed == 1 ]]
+/bin/rm -rf "$WORK"
+print 'macOS tool checks passed: JSON, stable FD snapshot, spaces, symlinks, hard links, FIFO rejection, gzip, ledger, unenrolled tick, report recovery/failed ack, request replay, log rotation, persistent pending enrollment, paused control check-in and exam deferral, plist.'

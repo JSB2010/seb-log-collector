@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { randomUUID, createHash, randomBytes } from "node:crypto";
 import assert from "node:assert/strict";
 const origin = process.env.TEST_ORIGIN ?? "http://127.0.0.1:3000";
@@ -17,7 +18,8 @@ async function request(path, method = "GET", data, headers = adminHeaders) {
   return b;
 }
 const metadata = {
-  collectorVersion: "0.1.0",
+  collectorVersion: JSON.parse(await readFile("package.json", "utf8")).version,
+  managementProtocol: 1,
   architecture: "arm64",
   macOSVersion: "26",
   macOSBuild: "SYNTHETIC",

@@ -27,7 +27,7 @@ npm run dev
 
 For an isolated synthetic dashboard, set `DEV_AUTH=true` and `DEV_MEMORY=true`, use `http://127.0.0.1:3000` as `PUBLIC_ORIGIN`, and fill the remaining settings with synthetic values. The local UI supplies `x-dev-admin: true` only when compiled in development and opened on loopback. Every bypass is rejected in production and Cloud Run. Then run `node tests/local-api-smoke.mjs` once against the empty local store. Do not use real school data in memory mode.
 
-On a development Mac, run `node tests/macos-executables.mjs`, `node tests/macos-installer.mjs`, and `/bin/zsh -f tests/macos-tools.zsh`. These verify shipped command paths, generated payload extraction/recovery, and native utilities against workspace fixtures; launchd/process controls are mocked and no real SEB logs are accessed. `npm run release:collector` regenerates the Jamf payloads. CI runs server checks, native macOS checks, and pinned ShellCheck on the portable deployment wrapper. ShellCheck does not understand zsh; zsh sources use the actual zsh parser and macOS behavior tests.
+On a development Mac, run `node tests/macos-executables.mjs`, `node tests/macos-installer.mjs`, `node tests/macos-management.mjs`, and `/bin/zsh -f tests/macos-tools.zsh`. These verify shipped command paths, generated payload extraction/recovery, and native utilities against workspace fixtures; launchd/process controls are mocked and no real SEB logs are accessed. `npm run release:collector` regenerates the Jamf payloads. CI runs server checks, native macOS checks, and pinned ShellCheck on the portable deployment wrapper. ShellCheck does not understand zsh; zsh sources use the actual zsh parser and macOS behavior tests.
 
 ## Deployment
 
@@ -39,7 +39,7 @@ Google OAuth configuration is required for human sign-in. Admins are explicitly 
 
 ## Jamf and rollout
 
-Follow [installation and removal](docs/jamf-runbook.md). Create an enrollment in the dashboard and download its combined install-and-enroll script. Macs running that scoped script register automatically, without a serial list, using a temporary bootstrap and unique permanent credentials. Enrollments can be reopened and their script downloaded repeatedly. Serial-reusable enrollment remains optional. Public generic packages contain no deployment origin or bootstrap; the downloaded operational script must stay restricted. Version one supports the standard home-relative SEB log directory and leaves privacy settings unchanged.
+Follow [installation and removal](docs/jamf-runbook.md). Create an enrollment in the dashboard and download its combined install-and-enroll script. Macs running that scoped script register automatically, without a serial list, using an enrollment-group bootstrap and unique permanent credentials. Enrollments can be reopened and their script downloaded repeatedly. Groups remain available until closed, and empty groups can be deleted or restored. Public generic packages contain no deployment origin or bootstrap; the downloaded operational script must stay restricted. Version one supports the standard home-relative SEB log directory and leaves privacy settings unchanged.
 
 Complete a five-to-ten-device pilot before fleet rollout. Verify the actual launchd/Jamf context, SEB exam deferral, privacy access, sleep/wake, standard and admin users, Intel/Apple silicon where needed, updates, and offline removal. See [acceptance checklist](docs/acceptance.md). A successful cloud upload or shell syntax check is separate evidence from successful managed-device deployment.
 
@@ -57,4 +57,4 @@ MIT. See [LICENSE](LICENSE).
 
 Dashboard pages have persistent URLs (`/fleet`, `/logs`, `/enrollment`, `/requests`, `/audit`, `/admins`) with filters and selected details in the query string. Activity is ordered newest first before pagination. Device details link directly to the device’s retained logs; **Open** renders an authenticated, verified log as plain text in a new tab.
 
-Release 0.2.0 adds Finder commands in Application Support and a **Device management** section in Enrollment with Jamf update, removal, collection, pause, and resume scripts. See the [runbook](docs/jamf-runbook.md) for the folder layout, update verification, and upgrade steps.
+Release 0.3.0 adds remote update/removal through check-in, persistent enrollment groups with live membership and bulk controls, and log catalog sorting by session date. Earlier releases add Finder commands in Application Support and a **Device management** section in Enrollment with Jamf update, removal, collection, pause, and resume scripts. See the [runbook](docs/jamf-runbook.md) for the folder layout, update verification, and upgrade steps.

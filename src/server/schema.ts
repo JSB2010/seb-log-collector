@@ -14,6 +14,7 @@ const text = z
 export const metadata = z
   .object({
     collectorVersion: text,
+    managementProtocol: z.literal(1).optional(),
     architecture: text,
     macOSVersion: text,
     macOSBuild: text,
@@ -121,14 +122,14 @@ export const batch = z
   .object({
     label: text.min(1),
     ceiling: z.number().int().min(1).max(1000).default(1000),
-    days: z.number().int().min(1).max(7).default(7),
+    days: z.number().int().min(1).max(7).optional(), // Legacy clients; groups no longer expire.
     // Accept older automatic-enrollment clients while removing roster enrollment.
     mode: z.literal("jamf").optional(),
   })
   .strict();
 export const batchUpdate = z
   .object({
-    state: z.enum(["open", "closed"]).optional(),
+    state: z.enum(["open", "closed", "deleted"]).optional(),
     label: text.min(1).optional(),
     ceiling: z.number().int().min(1).max(1000).optional(),
     days: z.number().int().min(1).max(7).optional(),

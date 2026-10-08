@@ -1,4 +1,21 @@
 const words: Record<string, string> = {
+  pause: "Pause",
+  resume: "Resume",
+  update: "Update",
+  uninstall: "Uninstall",
+  collect: "Collect",
+  installed: "Installed",
+  removed: "Removed",
+  busy: "Safe Exam Browser is running",
+  unconfirmed: "Completion unconfirmed",
+  checksum_mismatch: "Checksum mismatch",
+  install_failed: "Installation failed",
+  uninstall_failed: "Removal failed",
+  download_failed: "Download failed",
+  unsupported: "Unsupported release",
+  collector_upgrade_required: "Upgrade collector first",
+  command_already_pending: "Command already queued",
+  group_changed: "Device moved or retired",
   on_demand: "Requested collection",
   daily: "Daily collection",
   initial: "First collection",
@@ -35,7 +52,14 @@ const words: Record<string, string> = {
   revoke: "Device revoked",
   request_collection: "Collection queued",
   cancel_request: "Collection cancelled",
-  update_assignment: "Assignment updated",
+  update_assignment: "Enrollment group updated",
+  delete_batch: "Enrollment deleted",
+  queue_update: "Update queued",
+  queue_uninstall: "Uninstall queued",
+  command_running: "Device command started",
+  command_completed: "Device command completed",
+  command_failed: "Device command failed",
+  group_operation: "Group action",
   download_enrollment_script: "Enrollment script downloaded",
   refresh_enrollment_script: "Enrollment code refreshed",
   download_management_script: "Management script downloaded",
@@ -72,8 +96,4 @@ export function collectionSummary(counts: Record<string, number> = {}) {
   return parts.join(" · ") || "No new uploads";
 }
 export const enrollmentState = (r: Record<string, any>) =>
-  r.state === "closed"
-    ? "Closed"
-    : Date.parse(r.expiresAt) <= Date.now()
-      ? "Expired"
-      : "Open";
+  r.state === "deleted" ? "Deleted" : r.state === "closed" ? "Closed" : "Open";

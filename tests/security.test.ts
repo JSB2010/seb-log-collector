@@ -213,7 +213,7 @@ describe("Enrollment and permissions", () => {
       ).deviceId,
     ).not.toBe(d.id);
   });
-  it("allows saved credentials after batch expiry but rejects new enrollment", async () => {
+  it("allows saved credentials after group closure but rejects new enrollment", async () => {
     await db.transaction(async (t) => {
       const b = await t.get(`enrollmentBatches/${batch.id}`);
       t.set(`enrollmentBatches/${batch.id}`, {
@@ -229,7 +229,7 @@ describe("Enrollment and permissions", () => {
       const b = await t.get(`enrollmentBatches/${next.id}`);
       t.set(`enrollmentBatches/${next.id}`, {
         ...b,
-        expiresAt: "2000-01-01T00:00:00Z",
+        state: "closed",
       });
     });
     await expect(
@@ -529,7 +529,7 @@ describe("Reusable enrollment and chronological history", () => {
   it("orders every history before pagination and handles equal timestamps without omissions or duplicates", async () => {
     for (const [kind, field] of Object.entries({
       devices: "lastSeenAt",
-      logs: "acceptedAt",
+      logs: "logStartedAt",
       collections: "receivedAt",
       collectionRequests: "createdAt",
       auditEvents: "createdAt",
@@ -538,6 +538,7 @@ describe("Reusable enrollment and chronological history", () => {
       db.docs.clear();
       const expected = Array.from({ length: 121 }, (_, i) => ({
         id: String(i).padStart(3, "0"),
+        state: "open",
         [field]: new Date(Date.now() - Math.floor(i / 3) * 60000).toISOString(),
         expiresAt: new Date(Date.now() + 86400000).toISOString(),
       }));

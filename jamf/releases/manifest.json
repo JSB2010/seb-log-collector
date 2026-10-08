@@ -1,14 +1,14 @@
 {
-  "version": "0.2.1",
+  "version": "0.3.0",
   "schemaVersion": 1,
   "installer": {
     "path": "/collector/install.zsh",
-    "sha256": "a564da278bf8be67559793085bc33e59fce9a77375394126bdb6463bf0dc4a5d"
+    "sha256": "c9717ae3bb9437c5dbe113b28715129c30b6ca294a1da1b9c2fa507b5dd8a3eb"
   },
   "files": [
     {
       "name": "soe-diagnostics",
-      "sha256": "d2145b4d91b4ed152137108fb956bbb7822845ea65498700e92e16c2e3eda4ce"
+      "sha256": "28fdfa34f7f8d7c3b68ce3b67b81f86e651e7c640c4ccd91ac4d93479f146931"
     },
     {
       "name": "read-source",
@@ -16,7 +16,7 @@
     },
     {
       "name": "lib/collection.zsh",
-      "sha256": "e49e67248534477ebea47aca5d36432d8941d250fa8ddf6b280fbe312b8ef236"
+      "sha256": "85f01fc3c0edf852ff1f407dba95841cd428a818f01c107c131b06dea77b7e63"
     },
     {
       "name": "lib/common.zsh",
@@ -24,27 +24,35 @@
     },
     {
       "name": "lib/enrollment.zsh",
-      "sha256": "ac7301d62955b99dbebac54be2b1dc711479d288f89b4c6b280dedac7d1b605b"
+      "sha256": "2c58b0bf1637e45911073b2abb655304e884b33df2810fe50c7d966bee26d416"
     },
     {
       "name": "lib/http.zsh",
-      "sha256": "7afdf7c77a379b17f4739ffb338738bec2871a7e42097abcb2473b68f4c24b88"
+      "sha256": "3b80b30b6c3ab7d291fba007cc18fb03722091522696f0f4130ee9099c374a1f"
     },
     {
       "name": "lib/ledger.zsh",
       "sha256": "d7b99b2a8f1ff7f8d00cf8f1e7b61fdda107d5fcf904a3ddcff1415f858afa24"
     },
     {
+      "name": "lib/management.zsh",
+      "sha256": "69aed66f02b6da0ea0a7a0e9d98e0981793c66e902bab23c93f545449162808c"
+    },
+    {
       "name": "lib/metadata.zsh",
-      "sha256": "ca63ee0a5e82b61289873f140da84f309803f3e2c9b3a39c9c069ad3f0d2aefd"
+      "sha256": "3ef50dd723372ed502a9f56c4a8fbacd8bc3dd712cb79a35270ea5c96bb8c81f"
     },
     {
       "name": "support/manage.zsh",
       "sha256": "99803e129c9c5e50ae0ae0e42070ee2088c116179783cabb90841bf8b04767d5"
     },
     {
+      "name": "support/management-worker.zsh",
+      "sha256": "e14b9c1dad2f05fc82d9872aaee6b18d989996159f0e657bfe7e66b90380808a"
+    },
+    {
       "name": "support/uninstall.zsh",
-      "sha256": "5036384740d049bfef84fc9a37381bb61c9e28d6b8a9fd7a94c45b1d23482056"
+      "sha256": "c960f9bbf740d75b9839ac93080851fd7b7e0171570b9d57f334934690d98c2c"
     },
     {
       "name": "Collect Now.command",
@@ -76,7 +84,7 @@
     },
     {
       "name": "Read Me.txt",
-      "sha256": "d468b5722454097f607628a0678b9ddd63e98c22ca4232ea5a20696154519715"
+      "sha256": "31c5a7641672f104d447eae8b580eb4642bf1677a760ea946f87396a5ccece31"
     }
   ]
 }

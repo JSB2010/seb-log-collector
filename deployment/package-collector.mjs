@@ -21,6 +21,11 @@ payloads.push({
   dest: "support/manage.zsh",
   source: await readFile("collector/manage.zsh", "utf8"),
 });
+payloads.push({
+  name: "support/management-worker.zsh",
+  dest: "support/management-worker.zsh",
+  source: await readFile("collector/management-worker.zsh", "utf8"),
+});
 const header = await readFile("jamf/lifecycle.zsh", "utf8");
 const uninstall =
   header + "\n" + (await readFile("jamf/uninstall-body.zsh", "utf8"));
@@ -42,7 +47,7 @@ for (const [title, action] of Object.entries(actions)) {
   const source = `#!/bin/zsh -f\nemulate -LR zsh\nexport PATH=/usr/bin:/bin:/usr/sbin:/sbin\nprint 'Safe Online Exam Logs — ${title}'\nresult=0\nif (( EUID != 0 )); then\n  /usr/bin/sudo -- /bin/zsh -f '/Library/Application Support/SOEDiagnostics/support/manage.zsh' ${action} || result=$?\nelse\n  /bin/zsh -f '/Library/Application Support/SOEDiagnostics/support/manage.zsh' ${action} || result=$?\nfi\nif (( result != 0 )); then print -u2 'The command did not complete. Review the message above.'; fi\nif [[ -t 0 && -t 1 ]]; then read -r '?Press Return to close this window.'; fi\nexit $result\n`;
   payloads.push({ name: title + ".command", dest: title + ".command", source });
 }
-const readme = `Safe Online Exam Logs\n\nDouble-click a command to open it in Terminal. Administrator authentication is requested by sudo. Touch ID is available if your Mac already enables it for sudo. No authentication settings are changed by this installer.\n\nCollect Now.command — run a bounded collection immediately; Safe Exam Browser must be closed and collection must not be paused.\nStatus.command — show local version, enrollment, collection status and last contact.\nUpdate.command — install a newer checksum-verified release from this Mac's configured HTTPS service.\nReinstall.command — repair the current release offline, preserving enrollment and queued logs.\nUninstall.command — remove the collector; attempt server revocation when online.\nPause.command / Resume.command — control local collection.\n\nbin: internal collector code\nsupport: private recovery scripts\ncredentials, state, staging: private runtime data\n\nThe dashboard queues remote collection for the next check-in (normally every 30 minutes while awake). Update and removal can also be delivered through Jamf using the scripts in Enrollment → Device management. No PATH command is installed.\n`;
+const readme = `Safe Online Exam Logs\n\nDouble-click a command to open it in Terminal. Administrator authentication is requested by sudo. Touch ID is available if your Mac already enables it for sudo. No authentication settings are changed by this installer.\n\nCollect Now.command — run a bounded collection immediately; Safe Exam Browser must be closed and collection must not be paused.\nStatus.command — show local version, enrollment, collection status and last contact.\nUpdate.command — install a newer checksum-verified release from this Mac's configured HTTPS service.\nReinstall.command — repair the current release offline, preserving enrollment and queued logs.\nUninstall.command — remove the collector; attempt server revocation when online.\nPause.command / Resume.command — control local collection.\n\nbin: internal collector code\nsupport: private recovery scripts\ncredentials, state, staging: private runtime data\n\nThe dashboard queues remote collection for the next check-in (normally every 30 minutes while awake). Update and removal can be queued in the dashboard for the next check-in. Macs running Safe Exam Browser defer these actions. Jamf lifecycle scripts are in Enrollment → Device management. No PATH command is installed.\n`;
 payloads.push({ name: "Read Me.txt", dest: "Read Me.txt", source: readme });
 function writeLiteral(dest, source, checkShell = false) {
   const marker = "SOE_FILE_" + hash(source).slice(0, 24);
@@ -86,6 +91,7 @@ fi
 [[ -f $0 && ! -L $0 ]] || { print -u2 'Run the installer from a saved file'; exit 1; }
 /usr/bin/sed '/^# BEGIN ENROLLMENT BOOTSTRAP$/,/^# END ENROLLMENT BOOTSTRAP$/d' "$0" > "$incoming/support/installer.zsh"
 /usr/bin/shasum -a 256 < "$incoming/support/installer.zsh" | /usr/bin/awk '{print $1}' > "$incoming/support/installer.zsh.sha256"
+/usr/bin/shasum -a 256 < "$incoming/support/management-worker.zsh" | /usr/bin/awk '{print $1}' > "$incoming/support/management-worker.zsh.sha256"
 /usr/bin/shasum -a 256 < "$incoming/support/uninstall.zsh" | /usr/bin/awk '{print $1}' > "$incoming/support/uninstall.zsh.sha256"
 stop_job
 if [[ -d "$ROOT/bin" ]]; then
@@ -157,6 +163,8 @@ for (const name of ["collect-now", "pause", "resume"])
     `public/collector/${name}.zsh`,
     await readFile(`jamf/${name}.zsh`),
   );
+await mkdir(`public/collector/releases/${version}`, { recursive: true });
+await writeFile(`public/collector/releases/${version}/install.zsh`, install);
 const manifest = {
   version,
   schemaVersion: 1,
