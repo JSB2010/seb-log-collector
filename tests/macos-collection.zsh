@@ -2,6 +2,7 @@
 # Exercise the actual snapshot/ledger/retry/ack path with native Mac tools.
 emulate -LR zsh
 setopt ERR_EXIT NO_UNSET PIPE_FAIL EXTENDED_GLOB
+TRAPZERR() { print -u2 -- "Native collection fixture failed at ${funcfiletrace[1]:-unknown}"; }
 umask 077
 typeset project=${0:A:h:h}
 typeset lab=$(/usr/bin/mktemp -d "$project/.local/collection-fixture.XXXXXXXX")
@@ -42,13 +43,14 @@ print -r -- "{\"acknowledgment\":{\"rawSha256\":\"$hash\"}}" > "$WORK/ack.json"
 if confirm_row "$hash" "$WORK/ack.json" 2> "$WORK/sql-error.txt"; then print -u2 'Read-only ledger confirmation unexpectedly succeeded'; exit 1; fi
 [[ -f "$STAGE/$hash.gz" && $(<"$STATE/last-error") == ledger_error ]]
 [[ $(<"$WORK/sql-error.txt") == *'ledger operation failed'* && $(<"$WORK/sql-error.txt") != *'Fixture'* ]]
-/bin/chmod 600 "$LEDGER"
+# Older SQLite can retain read-only WAL/SHM files after the failed write.
+/bin/chmod 600 "$LEDGER" "$LEDGER"-wal(N) "$LEDGER"-shm(N)
 # Expiry cannot discard a tracked payload if its state update fails either.
 ledger_sql 'UPDATE uploads SET created_at=0;'
 /bin/chmod 400 "$LEDGER"
 if stage_cleanup 2> "$WORK/sql-error.txt"; then print -u2 'Read-only ledger cleanup unexpectedly succeeded'; exit 1; fi
 [[ -f "$STAGE/$hash.gz" ]]
-/bin/chmod 600 "$LEDGER"
+/bin/chmod 600 "$LEDGER" "$LEDGER"-wal(N) "$LEDGER"-shm(N)
 ledger_sql "UPDATE uploads SET created_at=$(/bin/date +%s);"
 typeset upload_id=$(/usr/bin/uuidgen); upload_id=${upload_id:l}
 typeset prepared=0 completed=0 uploaded=0
