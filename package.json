@@ -1,6 +1,6 @@
 {
   "name": "seb-log-collector",
-  "version": "0.3.1",
+  "version": "1.0.0",
   "private": true,
   "engines": {
     "node": ">=24 <25"
@@ -12,7 +12,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "release:collector": "node deployment/package-collector.mjs",
-    "check:collector": "for script in collector/soe-diagnostics collector/read-source collector/manage.zsh collector/management-worker.zsh collector/lib/*.zsh jamf/*.zsh jamf/releases/*.zsh public/collector/*.zsh; do zsh -n \"$script\" || exit; done"
+    "check:collector": "for script in collector/soe-diagnostics collector/read-source collector/manage.zsh collector/management-worker.zsh collector/lib/*.zsh jamf/*.zsh dist/collector/*/*.zsh public/collector/*.zsh; do zsh -n \"$script\" || exit; done",
+    "predev": "npm run release:collector",
+    "prebuild": "npm run release:collector -- --with-history",
+    "pretest": "npm run release:collector",
+    "verify:release": "node deployment/verify-release.mjs",
+    "test:release": "node tests/release-artifacts.mjs"
   },
   "dependencies": {
     "@google-cloud/firestore": "9.3.1",
@@ -32,5 +37,9 @@
     "prettier": "3.9.9",
     "typescript": "5.9.3",
     "vitest": "5.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JSB2010/seb-log-collector.git"
   }
 }

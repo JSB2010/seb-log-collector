@@ -15,6 +15,7 @@ No school-wide rollout is implied by building or deploying the server. Use synth
 - Native snapshot-to-acknowledgment collection with apostrophes, backslashes, Unicode and SQL-like metadata; orphan recovery/expiry, payload preservation on ledger write failure, safe error output and confirmed-source deduplication.
 - Repeated installer retrieval, encrypted bootstrap omission from lists, legacy one-time rotation, reopen preserving credentials/counts, and descending cursor pagination with timestamp ties.
 - Readable native lifecycle fixtures: offline repair, equal-version update, downgrade rejection, manifest/path/hash rejection, verified update, preserved state, and removal; network/launchd/process controls are mocked in this fixture.
+- Stable release fixtures: 1.0.0 installer rerun on 1.0.1 preserves the newer binary, recovery files, credentials, staging, pause and daemon; a scoped stale installer reconciles enrollment with the newer collector; truncated markers recover from binary version; unknown versions and wrong interpreters fail before replacement. Artifact generation is deterministic, checksums cover every asset, and tags must match source versions.
 - Local API smoke and browser checks for fleet, pause/resume, collection requests, enrollment and live admin management.
 - A 1,000-device synthetic memory cohort verifies enrollment, reporting, and complete cursor pagination. It does not certify Cloud Run throughput, concurrent live uploads, or managed fleet capacity.
 

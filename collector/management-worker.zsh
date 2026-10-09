@@ -1,4 +1,8 @@
 #!/bin/zsh -f
+if [ -z "${ZSH_VERSION:-}" ]; then
+  printf '%s\n' 'Safe Online Exam Logs requires zsh. Run: sudo /bin/zsh -f "path/to/script.zsh"' >&2
+  exit 2
+fi
 # Runs as a separate, transient launchd job so replacing/removing the main job
 # cannot kill the acknowledgment worker. Its private credentials expire locally.
 emulate -LR zsh

@@ -9,7 +9,8 @@ This project requires no Apple Developer account, signed package, notarization, 
 - `src/server`: enrollment, per-device credentials, durable reservations/quotas, verification, admin authorization, retention, and optional Safe Online Exam lookup.
 - `src/components`: fleet, log catalog, device details, reusable enrollment, requests, audit history, and live administrator management.
 - `collector`: short-lived zsh coordinator, SQLite ledger, and source reader running as the source user.
-- `jamf/releases`: readable self-contained install/update scripts, offline uninstaller, manifest, and SHA-256 checksums.
+- `jamf`: source templates for readable installers and lifecycle scripts.
+- `deployment`: reproducible artifact generator and release/deployment tooling. Generated scripts are published as [release assets](https://github.com/JSB2010/seb-log-collector/releases/latest), not committed to the source tree.
 - `infra`: Terraform for private storage, Firestore/indexes/TTL, narrow identities, Cloud Run, secrets, Scheduler, and monitoring.
 - `docs`: operating instructions, security limitations, API contracts, and acceptance gates.
 
@@ -27,7 +28,9 @@ npm run dev
 
 For an isolated synthetic dashboard, set `DEV_AUTH=true` and `DEV_MEMORY=true`, use `http://127.0.0.1:3000` as `PUBLIC_ORIGIN`, and fill the remaining settings with synthetic values. The local UI supplies `x-dev-admin: true` only when compiled in development and opened on loopback. Every bypass is rejected in production and Cloud Run. Then run `node tests/local-api-smoke.mjs` once against the empty local store. Do not use real school data in memory mode.
 
-On a development Mac, run `node tests/macos-executables.mjs`, `node tests/macos-installer.mjs`, `node tests/macos-management.mjs`, and `/bin/zsh -f tests/macos-tools.zsh`. These verify shipped command paths, generated payload extraction/recovery, and native utilities against workspace fixtures; launchd/process controls are mocked and no real SEB logs are accessed. `npm run release:collector` regenerates the Jamf payloads. CI runs server checks, native macOS checks, and pinned ShellCheck on the portable deployment wrapper. ShellCheck does not understand zsh; zsh sources use the actual zsh parser and macOS behavior tests.
+On a development Mac, first run `npm run release:collector`, then `node tests/macos-executables.mjs`, `node tests/macos-installer.mjs`, `node tests/macos-management.mjs`, `/bin/zsh -f tests/macos-tools.zsh` and `/bin/zsh -f tests/macos-collection.zsh`. These verify shipped commands, generated extraction/recovery, stale-installer protection, and native utilities against workspace fixtures; launchd/process controls are mocked and no real SEB logs are accessed. `npm run test:release` checks reproducible generation, checksums and tag validation. CI runs server checks, native macOS checks and pinned ShellCheck; zsh sources use the actual zsh parser and macOS behavior tests.
+
+`npm run release:collector` writes ignored `dist/collector/<version>/` release assets and `public/collector/` runtime assets. Development and production builds generate runtime files automatically. Production builds also fetch checksum-pinned historical installers from GitHub so pending device updates survive a new deployment. See [releasing](docs/releases.md) for the stable version policy and workflow.
 
 ## Deployment
 
@@ -57,4 +60,4 @@ MIT. See [LICENSE](LICENSE).
 
 Dashboard pages have persistent URLs (`/fleet`, `/logs`, `/enrollment`, `/requests`, `/audit`, `/admins`) with filters and selected details in the query string. Activity is ordered newest first before pagination. Device details link directly to the device’s retained logs; **Open** renders an authenticated, verified log as plain text in a new tab.
 
-Release 0.3.1 adds remote update/removal through check-in, persistent enrollment groups with live membership and bulk controls, and log catalog sorting by session date. Earlier releases add Finder commands in Application Support and a **Device management** section in Enrollment with Jamf update, removal, collection, pause, and resume scripts. See the [runbook](docs/jamf-runbook.md) for the folder layout, update verification, and upgrade steps.
+Version 1.0.0 is the first stable release. It includes remote update/removal, permanent enrollment groups, device bulk controls, session-date log browsing, persistent dashboard URLs and local Finder commands. The installer preserves a newer installed version when an old Jamf script is rerun. See the [changelog](CHANGELOG.md) and [runbook](docs/jamf-runbook.md) for upgrade and operating details.

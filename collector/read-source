@@ -1,4 +1,8 @@
 #!/bin/zsh -f
+if [ -z "${ZSH_VERSION:-}" ]; then
+  printf '%s\n' 'Safe Online Exam Logs requires zsh. Run: sudo /bin/zsh -f "path/to/script.zsh"' >&2
+  exit 2
+fi
 # This helper runs as the source user. It never sees device credentials.
 emulate -LR zsh
 setopt ERR_EXIT NO_UNSET PIPE_FAIL EXTENDED_GLOB

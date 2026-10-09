@@ -1,4 +1,9 @@
 #!/bin/zsh -f
+# Fail before any mutation when an MDM or administrator explicitly chooses sh/bash.
+if [ -z "${ZSH_VERSION:-}" ]; then
+  printf '%s\n' 'Safe Online Exam Logs requires zsh. Run: sudo /bin/zsh -f "path/to/script.zsh"' >&2
+  exit 2
+fi
 # Shared lifecycle guard. Included in generated installer / uninstaller payloads.
 emulate -LR zsh
 setopt ERR_EXIT NO_UNSET PIPE_FAIL EXTENDED_GLOB

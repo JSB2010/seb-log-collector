@@ -1,5 +1,13 @@
 name: Checks
-on: [push, pull_request]
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_call:
+    inputs:
+      release_assets:
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -12,6 +20,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm test
+      - run: npm run test:release
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
       - name: ShellCheck portable deployment wrapper
@@ -22,14 +31,23 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: "24.18.0" }
+      - run: npm ci --ignore-scripts
       - run: npm run release:collector
       - name: zsh syntax and native tools
         run: |
-          for f in collector/soe-diagnostics collector/read-source collector/manage.zsh collector/management-worker.zsh collector/lib/*.zsh jamf/*.zsh jamf/releases/*.zsh public/collector/*.zsh; do /bin/zsh -n "$f"; done
+          npm run check:collector
           node tests/macos-executables.mjs
           node tests/macos-installer.mjs
           node tests/macos-management.mjs
           /bin/zsh -f tests/macos-tools.zsh
           /bin/zsh -f tests/macos-collection.zsh
-      - name: Verify release checksums
-        run: cd jamf/releases && shasum -a 256 -c SHA256SUMS
+      - run: npm run verify:release
+        env:
+          RELEASE_TAG: ${{ inputs.release_assets && github.ref_name || '' }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.release_assets }}
+        with:
+          name: collector-release-assets
+          path: dist/collector/*/*
+          if-no-files-found: error
+          retention-days: 7

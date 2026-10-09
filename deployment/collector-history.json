@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "installers": [
+    {
+      "version": "0.3.0",
+      "asset": "install-0.3.0.zsh",
+      "sha256": "c9717ae3bb9437c5dbe113b28715129c30b6ca294a1da1b9c2fa507b5dd8a3eb"
+    },
+    {
+      "version": "0.3.1",
+      "asset": "install-0.3.1.zsh",
+      "sha256": "a1cc5d02ca66accdf4f209bc92aaeeccfee1e764b86b05b22f8a095189f3d999"
+    }
+  ]
+}

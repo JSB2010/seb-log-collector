@@ -1,6 +1,10 @@
-import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
+import { readFile, readdir, mkdir, writeFile, rm } from "node:fs/promises";
 import { createHash } from "node:crypto";
 const version = JSON.parse(await readFile("package.json", "utf8")).version;
+if (!/^(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})$/.test(version))
+  throw new Error(
+    "Collector releases require a canonical major.minor.patch version",
+  );
 if (
   !(await readFile("collector/soe-diagnostics", "utf8")).includes(
     `typeset -r VERSION=${version}\n`,
@@ -13,6 +17,7 @@ const files = [
   "read-source",
   ...(await readdir("collector/lib"))
     .filter((n) => n.endsWith(".zsh"))
+    .sort()
     .map((n) => "lib/" + n),
 ];
 const payloads = await Promise.all(
@@ -66,6 +71,36 @@ let install =
   `
 # Set API_ORIGIN in your IT-controlled copy. Updates preserve existing configuration.
 API_ORIGIN=\${API_ORIGIN:-}
+typeset -i needs_bootstrap=0
+# Compare both independent version records. Never source or execute them.
+newer_release() {
+  local -a left=(\${(s:.:)1}) right=(\${(s:.:)2})
+  local i
+  for i in 1 2 3; do
+    if (( 10#\${left[$i]} > 10#\${right[$i]} )); then return 0
+    elif (( 10#\${left[$i]} < 10#\${right[$i]} )); then return 1; fi
+  done
+  return 1
+}
+installed=''
+for p in "$ROOT/bin" "$ROOT/bin/soe-diagnostics" "$ROOT/state" "$ROOT/state/installed-version"; do safe_path "$p"; done
+marker=''; binary=''
+[[ ! -f "$ROOT/state/installed-version" ]] || marker=$(<"$ROOT/state/installed-version")
+[[ ! -f "$ROOT/bin/soe-diagnostics" ]] || binary=$(/usr/bin/sed -n 's/^typeset -r VERSION=//p' "$ROOT/bin/soe-diagnostics")
+for candidate in "$marker" "$binary"; do
+  if [[ $candidate == <->.<->.<-> && \${#candidate} -le 29 ]]; then
+    parts=(\${(s:.:)candidate})
+    if (( \${#parts[1]} <= 9 && \${#parts[2]} <= 9 && \${#parts[3]} <= 9 )); then
+      if [[ -z $installed ]] || newer_release "$candidate" "$installed"; then installed=$candidate; fi
+    fi
+  fi
+done
+if [[ -f "$ROOT/bin/soe-diagnostics" && -z $installed ]]; then
+  print -u2 'Installed version cannot be determined; preserving existing collector. Repair its version record before installing.'; exit 1
+fi
+if [[ -n $installed ]] && newer_release "$installed" '${version}'; then
+  print -r -- "Keeping newer Safe Online Exam Logs $installed (installer ${version})."
+else
 if [[ ! -f "$ROOT/config.json" ]]; then
   [[ $API_ORIGIN == https://* && $API_ORIGIN != *[$'\\n\\r\\t \\\"\\\\']* && \${API_ORIGIN#https://} != */* && \${API_ORIGIN#https://} != *[@?#]* ]] || { print -u2 'Set a valid HTTPS API_ORIGIN before first install'; exit 1; }
 fi
@@ -128,9 +163,14 @@ fi
 /usr/sbin/chown -R root:wheel "$ROOT" "$LOGS"
 /usr/sbin/chown root:wheel "$PLIST"
 print -r -- '${version}' > "$ROOT/state/installed-version"
-/bin/launchctl bootstrap system "$PLIST"
-/bin/zsh -f "$ROOT/bin/soe-diagnostics" status --json
-print 'Safe Online Exam Logs installed. Commands are in the Application Support folder.'
+needs_bootstrap=1
+fi
+# Enrollment is inserted here, including when an older script preserves newer code.
+if (( needs_bootstrap )); then /bin/launchctl bootstrap system "$PLIST"; fi
+if (( needs_bootstrap )); then
+  /bin/zsh -f "$ROOT/bin/soe-diagnostics" status --json
+  print 'Safe Online Exam Logs installed. Commands are in the Application Support folder.'
+fi
 `;
 const nativeSources = [install, uninstall, ...payloads.map((p) => p.source)];
 const nativeTools = [
@@ -150,25 +190,28 @@ const update = install.replace(
   "# Set API_ORIGIN",
   `[[ -f "$ROOT/config.json" ]] || { print 'No installed collector to update'; exit 0; }\n# Set API_ORIGIN`,
 );
-await mkdir("jamf/releases", { recursive: true });
+const releaseDir = `dist/collector/${version}`;
+await rm(releaseDir, { recursive: true, force: true });
+await mkdir(releaseDir, { recursive: true });
 await mkdir("public/collector", { recursive: true });
-for (const [name, source] of [
-  [`install-${version}.zsh`, install],
-  [`update-${version}.zsh`, update],
-  ["uninstall.zsh", uninstall],
-])
-  await writeFile("jamf/releases/" + name, source, { mode: 0o755 });
+const releaseFiles = [];
 for (const [name, source] of [
   ["install.zsh", install],
   ["update.zsh", update],
   ["uninstall.zsh", uninstall],
-])
+]) {
   await writeFile("public/collector/" + name, source);
-for (const name of ["collect-now", "pause", "resume"])
-  await writeFile(
-    `public/collector/${name}.zsh`,
-    await readFile(`jamf/${name}.zsh`),
-  );
+  const asset = `safe-online-exam-logs-${version}-${name}`;
+  releaseFiles.push(asset);
+  await writeFile(`${releaseDir}/${asset}`, source, { mode: 0o755 });
+}
+for (const name of ["collect-now", "pause", "resume"]) {
+  const source = await readFile(`jamf/${name}.zsh`);
+  await writeFile(`public/collector/${name}.zsh`, source);
+  const asset = `safe-online-exam-logs-${version}-${name}.zsh`;
+  releaseFiles.push(asset);
+  await writeFile(`${releaseDir}/${asset}`, source, { mode: 0o755 });
+}
 await mkdir(`public/collector/releases/${version}`, { recursive: true });
 await writeFile(`public/collector/releases/${version}/install.zsh`, install);
 const manifest = {
@@ -178,27 +221,28 @@ const manifest = {
   files: payloads.map(({ name, source }) => ({ name, sha256: hash(source) })),
 };
 for (const path of [
-  "jamf/releases/manifest.json",
+  `${releaseDir}/manifest.json`,
   "public/collector/manifest.json",
 ])
   await writeFile(path, JSON.stringify(manifest, null, 2) + "\n");
-const releaseNames = [
-  `install-${version}.zsh`,
-  `update-${version}.zsh`,
-  "uninstall.zsh",
-  "manifest.json",
-];
+releaseFiles.push("manifest.json");
 await writeFile(
-  "jamf/releases/SHA256SUMS",
+  `${releaseDir}/SHA256SUMS`,
   (
     await Promise.all(
-      releaseNames.map(
-        async (name) =>
-          hash(await readFile("jamf/releases/" + name)) + "  " + name,
-      ),
+      releaseFiles
+        .sort()
+        .map(
+          async (name) =>
+            hash(await readFile(`${releaseDir}/${name}`)) + "  " + name,
+        ),
     )
   ).join("\n") + "\n",
 );
+if (process.argv.includes("--with-history")) {
+  const { restoreHistory } = await import("./collector-history.mjs");
+  await restoreHistory(version);
+}
 console.log(
-  `Built ${version}: readable installer/updater, offline recovery and removal, Finder commands, manifest and checksums.`,
+  `Built ${version} release assets in ${releaseDir} and generated runtime assets in public/collector.`,
 );

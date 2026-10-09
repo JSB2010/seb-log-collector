@@ -6,6 +6,8 @@
 4. Build via `deployment/cloudbuild.yaml`, using `_IMAGE` for the target registry. Configure a separate build identity or an existing authorized build identity. Supply only source covered by `.gcloudignore`. Deploy the resulting digest, never an ambiguous mutable tag. The container runs as a non-root user with Node 24 LTS.
 5. Set `PUBLIC_ORIGIN` to the service's HTTPS origin without a trailing slash, and the same origin as `SCHEDULER_AUDIENCE`. Enable the service with one CPU, 1 GiB, concurrency eight, zero minimum instances and at most five instances. Cloud Run ingress is publicly reachable; application routes enforce all data access.
 
+The container builds collector artifacts from source with the same deterministic generator used by the GitHub release workflow. `public/collector/` and `dist/` are generated and excluded from uploads/source control. The build fetches historical installers listed in `deployment/collector-history.json` and verifies their pinned hashes; unavailable or changed assets fail the build. Keep an old installer listed for at least the seven-day lifetime of queued updates after its successor is deployed. See [release maintenance](releases.md). An artifact mirror can be selected with `COLLECTOR_RELEASE_REPOSITORY=owner/repository` at build time; it must contain byte-identical historical assets.
+
 ## Google sign-in setup
 
 In **Google Auth Platform**, select this project. Configure branding with an application name and operator support contact. Select **Internal** audience when the project belongs to the school's Workspace organization. Otherwise use an external testing audience and explicit test users until the operator completes production consent requirements. Request only `openid`, `email`, and `profile`.

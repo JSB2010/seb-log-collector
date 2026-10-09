@@ -14,3 +14,8 @@ test-results/
 playwright-report/
 
 tsconfig.tsbuildinfo
+
+# Generated release and web runtime artifacts; publish scripts as release assets.
+dist/
+public/collector/
+jamf/releases/

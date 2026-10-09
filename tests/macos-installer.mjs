@@ -27,7 +27,10 @@ try {
     { mode: 0o755 },
   );
   await writeFile(pgrep, "#!/bin/zsh -f\nexit 1\n", { mode: 0o755 });
-  let source = await readFile(`jamf/releases/install-${version}.zsh`, "utf8");
+  let source = await readFile(
+    `dist/collector/${version}/safe-online-exam-logs-${version}-install.zsh`,
+    "utf8",
+  );
   const guard = "[[ $EUID == 0 ]] || { print -u2 'Root required'; exit 1; }";
   assert.ok(source.includes(guard));
   source = source
@@ -41,7 +44,7 @@ try {
   // Plain-source payloads now contain fixture paths. Verify each release hash,
   // then re-hash only the isolated, path-rewritten fixture payload.
   const original = await readFile(
-    `jamf/releases/install-${version}.zsh`,
+    `dist/collector/${version}/safe-online-exam-logs-${version}-install.zsh`,
     "utf8",
   );
   const literal =
@@ -76,6 +79,14 @@ try {
   };
   function install() {
     return execFileSync("/bin/zsh", ["-f", script], { env, encoding: "utf8" });
+  }
+  for (const shell of ["/bin/sh", "/bin/bash"]) {
+    assert.throws(
+      () => execFileSync(shell, [script], { env, encoding: "utf8" }),
+      /requires zsh/,
+    );
+    await assert.rejects(stat(root), { code: "ENOENT" });
+    await assert.rejects(stat(`${lab}/calls`), { code: "ENOENT" });
   }
   assert.match(
     install(),
@@ -150,6 +161,112 @@ try {
     );
   }
   assert.equal((await stat(`${root}/support`)).mode & 0o777, 0o700);
+  // Exactly the stale Jamf scenario: 1.0.0 must not replace an installed 1.0.1.
+  const currentBinary = await readFile(`${root}/bin/soe-diagnostics`, "utf8");
+  const [major, minor, patch] = version.split(".").map(Number);
+  const newerVersion = `${major}.${minor}.${patch + 1}`;
+  const newerBinary = currentBinary.replace(
+    `typeset -r VERSION=${version}`,
+    `typeset -r VERSION=${newerVersion}`,
+  );
+  await writeFile(`${root}/bin/soe-diagnostics`, newerBinary);
+  await writeFile(`${root}/state/installed-version`, `${newerVersion}\n`);
+  const beforeCalls = await readFile(`${lab}/calls`, "utf8");
+  const recovery = await readFile(`${root}/support/installer.zsh`, "utf8");
+  const previous = await readFile(
+    `${root}/previous/bin/old-release-marker`,
+    "utf8",
+  );
+  assert.match(
+    install(),
+    new RegExp(
+      `Keeping newer Safe Online Exam Logs ${newerVersion.replaceAll(".", "\\.")}`,
+    ),
+  );
+  assert.equal(
+    await readFile(`${root}/bin/soe-diagnostics`, "utf8"),
+    newerBinary,
+  );
+  assert.equal(
+    await readFile(`${root}/state/installed-version`, "utf8"),
+    `${newerVersion}\n`,
+  );
+  assert.equal(
+    await readFile(`${root}/support/installer.zsh`, "utf8"),
+    recovery,
+  );
+  assert.equal(
+    await readFile(`${root}/previous/bin/old-release-marker`, "utf8"),
+    previous,
+  );
+  assert.equal(await readFile(`${lab}/calls`, "utf8"), beforeCalls);
+  assert.equal(
+    await readFile(`${root}/credentials/device.json`, "utf8"),
+    credentials,
+  );
+  assert.equal(await readFile(`${root}/config.json`, "utf8"), config);
+  assert.equal(
+    await readFile(`${root}/staging/fixture.gz`, "utf8"),
+    "synthetic-staging",
+  );
+  await stat(`${root}/state/paused`);
+  // A missing/truncated marker falls back to the binary version, still without a downgrade.
+  await writeFile(`${root}/state/installed-version`, "");
+  assert.match(
+    install(),
+    new RegExp(
+      `Keeping newer Safe Online Exam Logs ${newerVersion.replaceAll(".", "\\.")}`,
+    ),
+  );
+  assert.equal(
+    await readFile(`${root}/bin/soe-diagnostics`, "utf8"),
+    newerBinary,
+  );
+  assert.equal(await readFile(`${lab}/calls`, "utf8"), beforeCalls);
+  // Scoped stale enrollment still invokes enrollment on the preserved newer code.
+  const { enrollmentInstaller } =
+    await import("../src/components/enrollment.ts");
+  const stub =
+    'if [[ $CMD == enroll ]]; then /bin/cat > "$ROOT/state/fixture-bootstrap"; exit 0; fi\n';
+  await writeFile(
+    `${root}/bin/soe-diagnostics`,
+    newerBinary.replace("case $CMD in", stub + "case $CMD in"),
+  );
+  const scoped = `${lab}/enroll.zsh`;
+  const code = "a".repeat(43);
+  await writeFile(
+    scoped,
+    enrollmentInstaller(
+      source.replaceAll(launchctl, "/bin/launchctl"),
+      code,
+      "https://diagnostics.example.org",
+    ).replaceAll("/bin/launchctl", launchctl),
+  );
+  assert.match(
+    execFileSync("/bin/zsh", ["-f", scoped], { env, encoding: "utf8" }),
+    /Keeping newer/,
+  );
+  assert.equal(await readFile(`${root}/state/fixture-bootstrap`, "utf8"), code);
+  assert.equal(await readFile(`${lab}/calls`, "utf8"), beforeCalls);
+  // Conflicting records choose the newer value; unreadable versions fail closed.
+  await writeFile(`${root}/bin/soe-diagnostics`, currentBinary);
+  await writeFile(`${root}/state/installed-version`, `${newerVersion}\n`);
+  assert.match(install(), /Keeping newer/);
+  await writeFile(`${root}/state/installed-version`, "invalid\n");
+  await writeFile(
+    `${root}/bin/soe-diagnostics`,
+    "#!/bin/zsh\n# unknown release\n",
+  );
+  assert.throws(install, /Installed version cannot be determined/);
+  assert.equal(await readFile(`${lab}/calls`, "utf8"), beforeCalls);
+  // Repair the legacy truncated marker using the known binary version.
+  await writeFile(`${root}/bin/soe-diagnostics`, currentBinary);
+  await writeFile(`${root}/state/installed-version`, "");
+  assert.match(install(), /Safe Online Exam Logs installed/);
+  assert.equal(
+    await readFile(`${root}/state/installed-version`, "utf8"),
+    `${version}\n`,
+  );
   const manage = `${root}/support/manage.zsh`;
   function maintenance(action) {
     return execFileSync("/bin/zsh", ["-f", manage, action], {
@@ -207,9 +324,13 @@ else exit 22; fi
   assert.match(maintenance("update"), /Already up to date/);
   await manifest("0.0.1");
   assert.throws(() => maintenance("update"), /refusing downgrade/);
-  await manifest("1.0.0", fixtureHash, "https://untrusted.example.org/code");
+  await manifest(
+    newerVersion,
+    fixtureHash,
+    "https://untrusted.example.org/code",
+  );
   assert.throws(() => maintenance("update"), /Invalid update manifest/);
-  await manifest("1.0.0", "0".repeat(64));
+  await manifest(newerVersion, "0".repeat(64));
   assert.throws(() => maintenance("update"), /checksum mismatch/);
   assert.equal(
     await readFile(`${root}/credentials/device.json`, "utf8"),

@@ -1,0 +1,53 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+    with:
+      release_assets: true
+  publish:
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "24.18.0" }
+      - uses: actions/download-artifact@v4
+        with:
+          name: collector-release-assets
+          path: release-assets
+      - name: Validate tag, assets and checksums
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version=$(node -p 'require("./package.json").version')
+          test "$RELEASE_TAG" = "v$version"
+          test "$RELEASE_TAG" = "$(git describe --tags --exact-match)"
+          cd "release-assets/$version"
+          sha256sum --check SHA256SUMS
+      - name: Create draft, attach verified assets, then publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version=$(node -p 'require("./package.json").version')
+          node deployment/release-notes.mjs > release-notes.md
+          if gh release view "$RELEASE_TAG" --json isDraft > release-state.json 2>/dev/null; then
+            test "$(node -p 'require("./release-state.json").isDraft')" = true
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "Safe Online Exam Logs $version" --notes-file release-notes.md
+          fi
+          gh release upload "$RELEASE_TAG" "release-assets/$version/"* --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest --title "Safe Online Exam Logs $version" --notes-file release-notes.md

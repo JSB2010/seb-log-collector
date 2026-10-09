@@ -1,4 +1,8 @@
 #!/bin/zsh -f
+if [ -z "${ZSH_VERSION:-}" ]; then
+  printf '%s\n' 'Safe Online Exam Logs requires zsh. Run: sudo /bin/zsh -f "path/to/script.zsh"' >&2
+  exit 2
+fi
 # Root-only maintenance dispatcher. Launchers use sudo; Jamf already runs as root.
 emulate -LR zsh
 setopt ERR_EXIT NO_UNSET PIPE_FAIL EXTENDED_GLOB

@@ -14,9 +14,9 @@ const scripts = [
     .map((f) => `collector/lib/${f}`),
   "jamf/lifecycle.zsh",
   "jamf/uninstall-body.zsh",
-  `jamf/releases/install-${version}.zsh`,
-  `jamf/releases/update-${version}.zsh`,
-  "jamf/releases/uninstall.zsh",
+  `dist/collector/${version}/safe-online-exam-logs-${version}-install.zsh`,
+  `dist/collector/${version}/safe-online-exam-logs-${version}-update.zsh`,
+  `dist/collector/${version}/safe-online-exam-logs-${version}-uninstall.zsh`,
   "public/collector/install.zsh",
 ];
 const commands = new Set();

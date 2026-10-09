@@ -14,7 +14,9 @@ export function enrollmentInstaller(
     throw new Error("installer_unavailable");
   // The daemon can briefly hold the collector lock immediately after bootstrap.
   // Deliver enrollment before starting it so install-and-enroll is deterministic.
-  const start = '/bin/launchctl bootstrap system "$PLIST"';
+  const start = source.includes("typeset -i needs_bootstrap=0")
+    ? 'if (( needs_bootstrap )); then /bin/launchctl bootstrap system "$PLIST"; fi'
+    : '/bin/launchctl bootstrap system "$PLIST"';
   if (!source.includes(start)) throw new Error("installer_unavailable");
   return source
     .replace(marker, `API_ORIGIN='${origin}'`)
