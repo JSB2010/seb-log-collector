@@ -184,14 +184,18 @@ it("discards a late device detail response after selecting a log", async () => {
       .shift()!
       .resolve(reply({ items: [] }));
   });
-  expect(container.querySelector("h2")?.textContent).toBe("synthetic.log");
+  expect(container.querySelector(".log-filename")?.textContent).toBe(
+    "synthetic.log",
+  );
   await act(async () => {
     pending
       .get("devices/device-a")!
       .shift()!
       .resolve(reply({ device: fleetDevice, collections: [] }));
   });
-  expect(container.querySelector("h2")?.textContent).toBe("synthetic.log");
+  expect(container.querySelector(".log-filename")?.textContent).toBe(
+    "synthetic.log",
+  );
 });
 
 it("persists real tab URLs and restores filters and selection after remount", async () => {
@@ -265,21 +269,18 @@ it("renders readable device activity and provides an exact device log link", asy
   expect(location.search).toContain("deviceId=device-a");
 });
 
-it("uses an in-app confirmation for group actions and closes it with Escape", async () => {
+it("opens scoped group actions, restores focus on Escape, and requires confirmation before submitting", async () => {
   await navigate("Enrollment");
   await finish("enrollmentBatches", [{ ...enrollment, count: 2 }]);
-  const select = container.querySelector<HTMLSelectElement>(
-    'select[aria-label="Manage Pilot batch"]',
+  const trigger = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Manage Macs in Pilot batch"]',
   )!;
+  trigger.focus();
   await act(async () => {
-    select.value = "uninstall";
-    select.dispatchEvent(new Event("change", { bubbles: true }));
+    trigger.click();
   });
   expect(container.querySelector('[role="dialog"]')?.textContent).toContain(
     "2 enrolled Macs",
-  );
-  expect(container.querySelector('[role="dialog"]')?.textContent).toContain(
-    "need enrollment again",
   );
   await act(async () => {
     document.dispatchEvent(
@@ -287,8 +288,31 @@ it("uses an in-app confirmation for group actions and closes it with Escape", as
     );
   });
   expect(container.querySelector('[role="dialog"]')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
   expect(pending.has(`enrollment-batches/${enrollment.id}/actions`)).toBe(
     false,
+  );
+  await click("Manage Macs…");
+  const remove = [...container.querySelectorAll(".group-action")].find((b) =>
+    b.textContent?.startsWith("Queue uninstall"),
+  )!;
+  await act(async () =>
+    remove.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+  );
+  expect(container.querySelector('[role="dialog"]')?.textContent).toContain(
+    "need enrollment again",
+  );
+  expect(pending.has(`enrollment-batches/${enrollment.id}/actions`)).toBe(
+    false,
+  );
+  await click("Confirm action");
+  const request = vi
+    .mocked(fetch)
+    .mock.calls.find(([url]) =>
+      String(url).includes(`enrollment-batches/${enrollment.id}/actions`),
+    );
+  expect(JSON.parse((request?.[1] as RequestInit).body as string).action).toBe(
+    "uninstall",
   );
 });
 

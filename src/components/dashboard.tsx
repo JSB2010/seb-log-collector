@@ -15,6 +15,62 @@ const resource: Record<string, string> = {
   admins: "admins",
 };
 const date = (d?: string) => (d ? new Date(d).toLocaleString() : "—");
+function CompactTime({ value }: { value?: string }) {
+  if (!value) return <>—</>;
+  const timestamp = new Date(value);
+  return (
+    <time className="compact-time" dateTime={value} title={date(value)}>
+      <span>
+        {timestamp.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })}
+      </span>{" "}
+      <span>
+        {timestamp.toLocaleTimeString(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+        })}
+      </span>
+    </time>
+  );
+}
+const groupActions = [
+  {
+    action: "collect",
+    label: "Queue collection",
+    description: "Collect logs at the next check-in.",
+  },
+  {
+    action: "update",
+    label: "Queue update",
+    description: "Install the approved release at the next check-in.",
+  },
+  {
+    action: "pause",
+    label: "Pause collection",
+    description: "Pause log collection; management remains available.",
+  },
+  {
+    action: "resume",
+    label: "Resume collection",
+    description: "Restore scheduled log collection.",
+  },
+  {
+    action: "uninstall",
+    label: "Queue uninstall",
+    description: "Remove the collector at the next check-in.",
+    destructive: true,
+  },
+  {
+    action: "revoke",
+    label: "Revoke access",
+    description:
+      "Block server access immediately; leave the collector installed.",
+    destructive: true,
+  },
+];
 const day = (n: number) =>
   new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 function health(d: Row) {
@@ -95,6 +151,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
       run: () => void;
     } | null>(null),
     [editingBatch, setEditingBatch] = useState<Row | null>(null),
+    [managingGroup, setManagingGroup] = useState<Row | null>(null),
     [sort, setSort] = useState("session-newest"),
     [requestKind, setRequestKind] = useState("collection"),
     [groups, setGroups] = useState<Row[]>([]),
@@ -282,6 +339,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
     setDetail(null);
     setNotice("");
     setConfirmation(null);
+    setManagingGroup(null);
     setBatch(false);
     setRestoredSelection(p.get("selected") ?? "");
     if (push) history.pushState(null, "", `/${v}${p.size ? `?${p}` : ""}`);
@@ -346,15 +404,18 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
     }
   }, [me?.email, view, restoredSelection]);
   useEffect(() => {
-    if (!batch && !confirmation) return;
+    if (!batch && !confirmation && !managingGroup) return;
     const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
     const previous = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     dialog?.querySelector<HTMLElement>("input, button")?.focus();
     const keydown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
         setBatch(false);
         setConfirmation(null);
+        setManagingGroup(null);
       }
       if (e.key !== "Tab") return;
       const controls = Array.from(
@@ -375,9 +436,10 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
     document.addEventListener("keydown", keydown);
     return () => {
       document.removeEventListener("keydown", keydown);
+      document.body.style.overflow = previousOverflow;
       previous?.focus();
     };
-  }, [batch, confirmation]);
+  }, [batch, confirmation, managingGroup]);
   const follow = (
     e: React.MouseEvent<HTMLAnchorElement>,
     v: string,
@@ -754,13 +816,22 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                   ? [
                       "Device",
                       "Enrollment group",
+                      "App version",
                       "Versions",
                       "Last contact",
                       "Collection",
                       "State",
                     ]
                   : view === "logs"
-                    ? ["Session date", "Device", "User", "Size", "Expires", ""]
+                    ? [
+                        "Session date",
+                        "Device",
+                        "User",
+                        "Size",
+                        "Received",
+                        "Expires",
+                        "",
+                      ]
                     : view === "enrollment"
                       ? ["Group", "Devices / limit", "State", ""]
                       : view === "requests"
@@ -822,6 +893,11 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                         <small>{r.schoolEmail}</small>
                       </td>
                       <td>
+                        <span title="Safe Online Exam Logs version">
+                          {r.metadata?.collectorVersion ?? "—"}
+                        </span>
+                      </td>
+                      <td>
                         macOS {r.metadata?.macOSVersion ?? "—"} · SEB{" "}
                         {r.metadata?.sebVersion ?? "—"}
                       </td>
@@ -846,7 +922,9 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                           className="row-link"
                           onClick={() => void open(r)}
                         >
-                          {date(r.logStartedAt || r.source.mtime)}
+                          <CompactTime
+                            value={r.logStartedAt || r.source.mtime}
+                          />
                           {r.logDateBasis === "modified" && (
                             <small>File date</small>
                           )}
@@ -855,7 +933,12 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                       <td>{r.deviceName || r.serial}</td>
                       <td>{r.source.username}</td>
                       <td>{(r.gzipBytes / 1024).toFixed(1)} KiB</td>
-                      <td>{date(r.expiresAt)}</td>
+                      <td>
+                        <CompactTime value={r.acceptedAt || r.uploadedAt} />
+                      </td>
+                      <td>
+                        <CompactTime value={r.expiresAt} />
+                      </td>
                       <td>
                         <a
                           href={`/api/admin/v1/logs/${r.id}/open`}
@@ -894,27 +977,14 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                             Edit
                           </button>
                           {r.count > 0 && r.state !== "deleted" && (
-                            <select
-                              aria-label={`Manage ${r.label}`}
-                              value=""
+                            <button
+                              aria-label={`Manage Macs in ${r.label}`}
+                              aria-haspopup="dialog"
                               disabled={busy}
-                              onChange={(e) => {
-                                const action = e.target.value;
-                                setConfirmation({
-                                  title: `${humanize(e.target.value)} group`,
-                                  body: `Apply ${humanize(e.target.value).toLowerCase()} to ${r.count} enrolled Macs in “${r.label}”?${["revoke", "uninstall"].includes(e.target.value) ? " These Macs will need enrollment again." : ""}`,
-                                  run: () => void groupAction(r, action),
-                                });
-                              }}
+                              onClick={() => setManagingGroup(r)}
                             >
-                              <option value="">Manage Macs…</option>
-                              <option value="collect">Queue collection</option>
-                              <option value="pause">Pause</option>
-                              <option value="resume">Resume</option>
-                              <option value="update">Queue update</option>
-                              <option value="uninstall">Queue uninstall</option>
-                              <option value="revoke">Revoke</option>
-                            </select>
+                              Manage Macs…
+                            </button>
                           )}
                           {r.count === 0 && r.state !== "deleted" && (
                             <button
@@ -1263,6 +1333,10 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                 {[
                   ["Serial", detail.device.serial],
                   ["Enrollment group", detail.device.assignedLabel],
+                  [
+                    "Safe Online Exam Logs version",
+                    detail.device.metadata?.collectorVersion,
+                  ],
                   ["macOS version", detail.device.metadata?.macOSVersion],
                   ["SEB version", detail.device.metadata?.sebVersion],
                   ["Last contact", date(detail.device.lastSeenAt)],
@@ -1500,13 +1574,18 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
             </>
           ) : view === "logs" && detail ? (
             <>
-              <h2>{detail.log.source.basename}</h2>
+              <h2>
+                {date(detail.log.logStartedAt || detail.log.source.mtime)}
+              </h2>
+              <p className="log-filename">{detail.log.source.basename}</p>
               <p>{detail.log.source.username}</p>
               <dl>
                 {[
                   ["Device", detail.log.serial],
-                  ["Uploaded", date(detail.log.uploadedAt)],
-                  ["Accepted", date(detail.log.acceptedAt)],
+                  [
+                    "Received",
+                    date(detail.log.acceptedAt || detail.log.uploadedAt),
+                  ],
                   ["Expires", date(detail.log.expiresAt)],
                   ["Raw SHA-256", detail.log.rawSha256],
                 ].map(([k, v]) => (
@@ -1577,6 +1656,55 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
             <p>Loading details…</p>
           )}
         </aside>
+      )}
+      {managingGroup && (
+        <div className="modal-backdrop">
+          <section
+            className="modal group-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="group-title"
+            aria-describedby="group-scope"
+          >
+            <button
+              className="close"
+              aria-label="Close group actions"
+              onClick={() => setManagingGroup(null)}
+            >
+              <Icon name="close" />
+            </button>
+            <div>
+              <h2 id="group-title">Manage Macs</h2>
+              <p id="group-scope">
+                {managingGroup.label} · {managingGroup.count} enrolled Macs
+              </p>
+            </div>
+            <div className="group-action-grid">
+              {groupActions.map(
+                ({ action, label, description, destructive }) => (
+                  <button
+                    key={action}
+                    className={`group-action${destructive ? " danger" : ""}`}
+                    disabled={busy}
+                    onClick={() => {
+                      const group = managingGroup;
+                      setManagingGroup(null);
+                      setConfirmation({
+                        title: label,
+                        body: `${label} for ${group.count} enrolled Macs in “${group.label}”?${destructive ? " These Macs will need enrollment again." : ""}`,
+                        run: () => void groupAction(group, action),
+                      });
+                    }}
+                  >
+                    <strong>{label}</strong>
+                    <span>{description}</span>
+                  </button>
+                ),
+              )}
+            </div>
+            <button onClick={() => setManagingGroup(null)}>Done</button>
+          </section>
+        </div>
       )}
       {confirmation && (
         <div className="modal-backdrop">

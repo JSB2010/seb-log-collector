@@ -109,7 +109,7 @@ header p {
   min-height: 100svh;
 }
 .shell.has-detail {
-  grid-template-columns: var(--sidebar-width) minmax(430px, 1fr) 360px;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 360px;
 }
 .sidebar {
   background: var(--rail);
@@ -396,6 +396,24 @@ code {
   border-left: 1px solid var(--line);
   padding: 50px 24px 30px;
   min-width: 0;
+  overflow-wrap: anywhere;
+}
+.detail h2 {
+  line-height: 1.35;
+}
+.detail .log-filename {
+  font-size: 13px;
+  margin: 10px 0 6px;
+}
+.compact-time {
+  display: inline-grid;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.compact-time > span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
 }
 .close {
   position: absolute;
@@ -421,7 +439,7 @@ code {
 }
 .detail dl div {
   display: grid;
-  grid-template-columns: 1fr 1.1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
   gap: 15px;
 }
 .detail dt {
@@ -518,6 +536,30 @@ pre {
   box-shadow: 0 15px 60px #12234840;
   display: grid;
   gap: 20px;
+  max-height: calc(100svh - 40px);
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.group-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+  gap: 12px;
+}
+.group-action {
+  display: grid;
+  justify-content: stretch;
+  align-content: start;
+  gap: 5px;
+  text-align: left;
+  padding: 15px;
+}
+.group-action span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+.group-modal #group-scope {
+  margin-top: 6px;
 }
 .modal p {
   color: var(--muted);
@@ -872,8 +914,5 @@ summary {
   .groups-table td:nth-child(4) {
     grid-row: 3;
     grid-column: 1 / -1;
-  }
-  .groups-table .row-actions select {
-    width: 100%;
   }
 }
