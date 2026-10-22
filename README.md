@@ -61,3 +61,19 @@ MIT. See [LICENSE](LICENSE).
 Dashboard pages have persistent URLs (`/fleet`, `/logs`, `/enrollment`, `/requests`, `/audit`, `/admins`) with filters and selected details in the query string. Activity is ordered newest first before pagination. Device details link directly to the device’s retained logs; **Open** renders an authenticated, verified log as plain text in a new tab.
 
 Version 1.0.0 is the first stable release. It includes remote update/removal, permanent enrollment groups, device bulk controls, session-date log browsing, persistent dashboard URLs and local Finder commands. The installer preserves a newer installed version when an old Jamf script is rerun. See the [changelog](CHANGELOG.md) and [runbook](docs/jamf-runbook.md) for upgrade and operating details.
+
+## Correct existing log session timestamps
+
+SEB macOS filenames contain UTC session-start timestamps. They must not be
+converted from the device's local timezone; log lines can still use local time.
+New uploads use the corrected parser. To inspect existing catalog corrections:
+
+```sh
+node deployment/reindex-log-dates.mjs --project PROJECT_ID --account ADMIN_ACCOUNT
+```
+
+This is a dry run. Add `--apply` only after reviewing the count. The script
+uses command-scoped credentials, updates only the two date-index fields, and
+stops on a concurrent record change. It never changes the uploaded files,
+retention deadlines, or device policies. Run the preview again after any
+partial failure before applying the remaining corrections.

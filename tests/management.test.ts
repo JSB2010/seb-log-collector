@@ -177,29 +177,40 @@ it("bulk actions are replay safe and report unsupported collectors individually"
   });
   expect(result.results[d.id]).toBe("collector_upgrade_required");
 });
-it("resolves filename dates in the Mac timezone and falls back for invalid or ambiguous times", () => {
+it("reads UTC SEB filenames independently of the Mac timezone and DST", () => {
   const source = {
     basename:
-      "org.safeexambrowser.SafeExamBrowser 2026-10-06--03-20-54-455.log",
-    mtime: "2026-10-06T18:00:00.000Z",
+      "org.safeexambrowser.SafeExamBrowser 2026-10-21--15-21-30-994.log",
+    mtime: "2026-10-21T15:27:47.000Z",
   };
-  expect(logDate(source, "America/Denver")).toEqual({
-    logStartedAt: "2026-10-06T09:20:54.455Z",
-    logDateBasis: "filename",
-  });
-  expect(
-    logDate(
-      { ...source, basename: "x 2026-02-30--03-20-54-455.log" },
-      "America/Denver",
-    ).logDateBasis,
-  ).toBe("modified");
+  for (const zone of ["America/Denver", "Asia/Kolkata", "invalid", undefined]) {
+    expect(logDate(source, zone)).toEqual({
+      logStartedAt: "2026-10-21T15:21:30.994Z",
+      logDateBasis: "filename",
+    });
+  }
   expect(
     logDate(
       { ...source, basename: "x 2026-11-01--01-30-00-000.log" },
       "America/Denver",
-    ).logDateBasis,
-  ).toBe("modified");
+    ).logStartedAt,
+  ).toBe("2026-11-01T01:30:00.000Z");
+  expect(
+    logDate({ ...source, basename: "x 2028-02-29--00-00-00-000.log" })
+      .logDateBasis,
+  ).toBe("filename");
+  for (const basename of [
+    "x 2026-02-30--03-20-54-455.log",
+    "x 2026-01-01--24-00-00-000.log",
+    "unrecognized.log",
+  ]) {
+    expect(logDate({ ...source, basename }, "America/Denver")).toEqual({
+      logStartedAt: source.mtime,
+      logDateBasis: "modified",
+    });
+  }
 });
+
 it("sorts session and received dates independently before pagination in both directions", async () => {
   for (let i = 0; i < 111; i++)
     db.docs.set(`logs/${i}`, {
