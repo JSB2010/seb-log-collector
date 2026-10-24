@@ -230,3 +230,28 @@ it("redacts JSON and multiline credentials in native text", () => {
   expect(safe).not.toMatch(/synthetic-secret|synthetic-code|synthetic-key/);
   expect(safe).toContain("ordinary");
 });
+
+it("returns refreshed bounded parser metadata for incremental dashboard persistence", async () => {
+  const log = {
+    id: "backfill-log",
+    acceptedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    objectKey: "private-object",
+    generation: "1",
+    rawBytes: raw.length,
+    gzipBytes: gzipSync(raw).length,
+    rawSha256: sha(raw),
+    gzipSha256: sha(gzipSync(raw)),
+  };
+  await db.transaction(async (tx) => tx.set("logs/" + log.id, log));
+  const result = await (
+    await integrationRoute(req("logs/reindex", "POST", {}, "worker"), db)
+  ).json();
+  expect(result.indexed).toBe(1);
+  expect(result.items).toHaveLength(1);
+  expect(result.items[0].analysis.parsingStatus).toBe("parsed");
+  expect(result.items[0].analysis.findings.length).toBeGreaterThan(0);
+  expect(result.items[0].objectKey).toBeUndefined();
+  expect(result.items[0].generation).toBeUndefined();
+  expect(result.nextCursor).toBeNull();
+});

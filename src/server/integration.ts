@@ -441,8 +441,12 @@ export async function integrationRoute(req: Request, db: Store) {
       }
     }
     const last = rows.at(-1);
+    const refreshed = await Promise.all(
+      rows.map((l) => db.get("logs/" + l.id)),
+    );
     return json({
       indexed,
+      items: refreshed.filter(alive).map((l) => safeLog(l!)),
       nextCursor:
         rows.length === 5 && last
           ? Buffer.from(
