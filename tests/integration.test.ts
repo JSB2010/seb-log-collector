@@ -6,7 +6,11 @@ import { Readable } from "node:stream";
 import { MemoryStore } from "../src/server/store";
 import { token } from "../src/server/auth";
 import { sha } from "../src/server/crypto";
-import { integrationRoute, inspectLog } from "../src/server/integration";
+import {
+  integrationRoute,
+  inspectLog,
+  safeLog,
+} from "../src/server/integration";
 const { verify } = vi.hoisted(() => ({ verify: vi.fn() }));
 vi.mock("google-auth-library", () => ({
   OAuth2Client: class {
@@ -69,6 +73,20 @@ beforeEach(async () => {
   });
 });
 afterEach(() => vi.unstubAllEnvs());
+it("normalizes legacy filename timestamps as UTC without changing stored evidence", () => {
+  const source = {
+    basename:
+      "org.safeexambrowser.SafeExamBrowser 2026-09-17--20-07-09-635.log",
+    mtime: "2026-09-18T04:00:00.000Z",
+  };
+  const old = {
+    source,
+    logStartedAt: "2026-09-18T02:07:09.635Z",
+    logDateBasis: "filename",
+  };
+  expect(safeLog(old).logStartedAt).toBe("2026-09-17T20:07:09.635Z");
+  expect(old.logStartedAt).toBe("2026-09-18T02:07:09.635Z");
+});
 it("requires the registered Google service identity and rechecks current administrator authorization", async () => {
   await expect(
     integrationRoute(req("authorize", "POST", {}, "invalid"), db),

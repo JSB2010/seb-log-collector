@@ -4,6 +4,7 @@ import { OAuth2Client } from "google-auth-library";
 import { z } from "zod";
 import { admin, bearer, type Actor } from "./auth";
 import { config } from "./config";
+import { logDate } from "./log-date";
 import { sha, secret } from "./crypto";
 import { ApiError, requireThat } from "./errors";
 import { Service, audit, alive, expiry, now } from "./service";
@@ -131,13 +132,19 @@ const json = (v: unknown, status = 200) =>
     },
   });
 export function safeLog(l: Doc) {
+  // Retained records can predate the UTC filename correction. Re-derive the
+  // timestamp for the integration without altering original stored evidence.
+  const date = logDate({
+    basename: l.source?.basename,
+    mtime: l.source?.mtime || l.logStartedAt,
+  });
   return {
     id: l.id,
     deviceId: l.deviceId,
     acceptedAt: l.acceptedAt,
     uploadedAt: l.uploadedAt,
-    logStartedAt: l.logStartedAt,
-    logDateBasis: l.logDateBasis,
+    logStartedAt: date.logStartedAt,
+    logDateBasis: date.logDateBasis,
     expiresAt: l.expiresAt,
     rawBytes: l.rawBytes,
     sourceBasename: l.source?.basename,
@@ -652,7 +659,7 @@ export async function integrationRoute(req: Request, db: Store) {
           creator: actor!.email,
           createdAt: now(),
           acceptedAt: l.acceptedAt,
-          logStartedAt: l.logStartedAt,
+          logStartedAt: safeLog(l).logStartedAt,
           expiresAt: l.expiresAt,
           ttlAt: new Date(l.expiresAt),
         });
