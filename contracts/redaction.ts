@@ -20,8 +20,9 @@ export function redactDiagnosticText(input: string): string {
     })
     .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, "[redacted-jwt]")
     .replace(/\bBearer\s+[^\s,;]+/gi, "Bearer [redacted]")
+    .replace(/(["']?(?:cookie|set-cookie|authorization)["']?\s*[=:]\s*)[^\r\n]*/gi, "$1[redacted]")
     .replace(
-      /((?:token|id[_ -]?token|state|code|access[_ -]?code|password|cookie|authorization|config[_ -]?key(?:[_ -]?hash)?|private[_ -]?key|proof[_ -]?token|refresh[_ -]?token|access[_ -]?token|bootstrap|session[_ -]?token)\s*[=:]\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi,
+      /(["']?(?:[a-z_]*(?:password|secret)|token|id[_ -]?token|state|code|access[_ -]?code|cookie|authorization|config[_ -]?key(?:[_ -]?hash)?|browser[_ -]?exam[_ -]?key|exam[_ -]?key|private[_ -]?key|proof[_ -]?token|refresh[_ -]?token|access[_ -]?token|bootstrap|session[_ -]?token)["']?\s*[=:]\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;}\]]+)/gi,
       "$1[redacted]"
     );
 }
@@ -103,4 +104,38 @@ export function analyzeLog(text: string): LogAnalysis {
     lineCount: lines.length,
     timestampBasis: "client_log_uncertain"
   };
+}
+
+/** Per-file state prevents multiline plist/PEM credentials leaking in previews. */
+export class DiagnosticTextRedactor {
+  private pem = false;
+  private plist = false;
+  private nextJson = false;
+  line(value: string) {
+    if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/i.test(value)) this.pem = true;
+    if (this.pem) {
+      if (/-----END [A-Z ]*PRIVATE KEY-----/i.test(value)) this.pem = false;
+      return "[redacted private key]";
+    }
+    if (this.plist) {
+      if (/<\/(?:string|data)>/i.test(value)) this.plist = false;
+      return "[redacted sensitive setting]";
+    }
+    if (this.nextJson) {
+      this.nextJson = false;
+      return "[redacted credential value]";
+    }
+    const secret =
+      "(?:[a-z_]*(?:password|secret)|token|id[_ -]?token|state|code|access[_ -]?code|cookie|authorization|config[_ -]?key(?:[_ -]?hash)?|browser[_ -]?exam[_ -]?key|exam[_ -]?key|private[_ -]?key|proof[_ -]?token|refresh[_ -]?token|access[_ -]?token|bootstrap|session[_ -]?token)";
+    const key = new RegExp("<key>\\s*" + secret + "\\s*</key>", "i").exec(value);
+    if (key) {
+      this.plist = !/<\/(?:string|data)>/i.test(value.slice(key.index + key[0].length));
+      return "[redacted sensitive setting]";
+    }
+    if (new RegExp("[\"\\']" + secret + "[\"\\']\\s*:\\s*$", "i").test(value)) {
+      this.nextJson = true;
+      return redactDiagnosticText(value);
+    }
+    return redactDiagnosticText(value);
+  }
 }

@@ -1,3 +1,4 @@
+import { DiagnosticTextRedactor } from "../../contracts/redaction";
 import { randomUUID, createHash } from "node:crypto";
 import { OAuth2Client } from "google-auth-library";
 import { z } from "zod";
@@ -184,9 +185,10 @@ export async function inspectLog(
     let capped = false;
     const offset = options.offset || 0,
       limit = options.limit || 500;
+    const redactor = new DiagnosticTextRedactor();
     const processLine = (line: string) => {
       number++;
-      const safe = redactDiagnosticText(line.slice(0, 65536));
+      const safe = redactor.line(line.slice(0, 65536));
       if (options.analyze) {
         if (total < 8 * 1024 * 1024) captured.push(line.slice(0, 65536));
         else capped = true;

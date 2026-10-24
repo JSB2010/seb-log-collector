@@ -1,3 +1,4 @@
+import { DiagnosticTextRedactor } from "../contracts/redaction";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { randomUUID, createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
@@ -211,4 +212,21 @@ it("checks immutable bytes, sanitizes viewing/search, rejects expiry and audits 
   await expect(
     inspectLog({ ...log, expiresAt: new Date(Date.now() - 1).toISOString() }),
   ).rejects.toMatchObject({ status: 410 });
+});
+
+it("redacts JSON and multiline credentials in native text", () => {
+  const redactor = new DiagnosticTextRedactor();
+  const safe = [
+    '"password":"synthetic-secret"',
+    "<key>accessCode</key>",
+    "<string>synthetic-code</string>",
+    "-----BEGIN PRIVATE KEY-----",
+    "synthetic-key",
+    "-----END PRIVATE KEY-----",
+    "ordinary",
+  ]
+    .map((v) => redactor.line(v))
+    .join("\n");
+  expect(safe).not.toMatch(/synthetic-secret|synthetic-code|synthetic-key/);
+  expect(safe).toContain("ordinary");
 });
