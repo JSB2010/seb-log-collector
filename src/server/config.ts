@@ -16,6 +16,7 @@ const schema = z.object({
   SESSION_SECRET: z.string().min(32),
   GOOGLE_CLIENT_ID: z.string().default(""),
   GOOGLE_CLIENT_SECRET: z.string().default(""),
+  INTEGRATION_CLIENTS: z.string().default("{}"),
   INTEGRATION_SECRET: z.string().default(""),
   SOE_ADMIN_ORIGIN: z.string().default(""),
   DEV_AUTH: z.enum(["true", "false"]).default("false"),

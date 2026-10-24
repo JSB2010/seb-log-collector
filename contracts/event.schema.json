@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:soe:diagnostics:event:1",
+  "title": "SOE diagnostic event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schemaVersion",
+    "eventId",
+    "installationId",
+    "occurredAt",
+    "flowId",
+    "stage",
+    "outcome",
+    "source",
+    "severity"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string"
+    },
+    "installationId": {
+      "type": "string"
+    },
+    "occurredAt": {
+      "type": "string"
+    },
+    "flowId": {
+      "type": "string"
+    },
+    "attemptId": {
+      "type": "string"
+    },
+    "subjectKey": {
+      "type": "string"
+    },
+    "stage": {
+      "type": "string"
+    },
+    "reasonCode": {
+      "type": "string"
+    },
+    "courseId": {
+      "type": "string"
+    },
+    "contentId": {
+      "type": "string"
+    },
+    "configurationRevision": {
+      "type": "string"
+    },
+    "traceId": {
+      "type": "string"
+    },
+    "spanId": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "string"
+    },
+    "detectorVersion": {
+      "type": "string"
+    },
+    "sebVersion": {
+      "type": "string"
+    },
+    "osVersion": {
+      "type": "string"
+    },
+    "clientOccurredAt": {
+      "type": "string"
+    },
+    "errorFingerprint": {
+      "type": "string"
+    },
+    "schema": {
+      "const": "soe.diagnostics"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "outcome": {
+      "enum": ["started", "succeeded", "failed", "observed", "unknown"]
+    },
+    "source": {
+      "enum": ["server", "browser", "seb_log", "canvas", "legacy"]
+    },
+    "severity": {
+      "enum": ["INFO", "WARNING", "ERROR"]
+    },
+    "contentType": {
+      "enum": ["CLASSIC_QUIZ", "NEW_QUIZ"]
+    },
+    "durationMs": {
+      "type": "number",
+      "minimum": 0
+    },
+    "status": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 599
+    },
+    "clientSequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "keyId", "iv", "tag", "ciphertext"],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "keyId": {
+          "type": "string"
+        },
+        "iv": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "ciphertext": {
+          "type": "string"
+        }
+      }
+    },
+    "stackFrames": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "maxLength": 180
+      }
+    },
+    "details": {
+      "type": "object",
+      "maxProperties": 20,
+      "additionalProperties": {
+        "type": ["string", "number", "boolean"]
+      }
+    }
+  },
+  "description": "Wire shape. diagnostics.ts additionally enforces strict detail allowlists and credential-safe values."
+}

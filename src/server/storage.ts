@@ -1,3 +1,4 @@
+import { analyzeLog } from "../../contracts/redaction";
 import { Storage } from "@google-cloud/storage";
 import { GoogleAuth } from "google-auth-library";
 import { createHash } from "node:crypto";
@@ -126,7 +127,9 @@ export async function verifyGzip(
   );
   const inflate = createInflateRaw(),
     rawHash = createHash("sha256"),
-    preview: Buffer[] = [];
+    preview: Buffer[] = [],
+    analysisChunks: Buffer[] = [];
+  let analysisBytes = 0;
   let rawBytes = 0,
     crc = 0,
     previewSize = 0;
@@ -140,6 +143,11 @@ export async function verifyGzip(
     for await (const value of inflate) {
       const chunk = Buffer.from(value);
       rawBytes += chunk.length;
+      if (analysisBytes < 2 * 1024 * 1024) {
+        const part = chunk.subarray(0, 2 * 1024 * 1024 - analysisBytes);
+        analysisChunks.push(part);
+        analysisBytes += part.length;
+      }
       requireThat(
         rawBytes <= expected.rawBytes && rawBytes <= 64 * 1024 ** 2,
         422,
@@ -174,13 +182,39 @@ export async function verifyGzip(
     422,
     "raw_integrity_mismatch",
   );
+  let analysis: ReturnType<typeof analyzeLog> & {
+    partial: boolean;
+    parsingStatus: string;
+  };
+  try {
+    analysis = {
+      ...analyzeLog(Buffer.concat(analysisChunks).toString("utf8")),
+      partial: rawBytes > analysisBytes,
+      parsingStatus: rawBytes > analysisBytes ? "partial" : "parsed",
+    };
+  } catch {
+    analysis = {
+      parserVersion: 1,
+      markers: [],
+      findings: [],
+      lineCount: 0,
+      timestampBasis: "client_log_uncertain",
+      partial: true,
+      parsingStatus: "failed",
+    };
+  }
   return {
     text: Buffer.concat(preview).toString("utf8"),
     partial: rawBytes > previewSize,
+    analysis,
     rawBytes,
   };
 }
-export async function verifyObject(u: Doc) {
+export async function verifyObject(u: Doc): Promise<{
+  generation: string;
+  uploadedAt: string;
+  analysis?: ReturnType<typeof analyzeLog> & { partial: boolean };
+}> {
   const [m] = await object(u.objectKey).getMetadata();
   requireThat(
     m.contentType === "application/gzip" && !m.contentEncoding,
@@ -195,8 +229,9 @@ export async function verifyObject(u: Doc) {
     45000,
   );
   timer.unref();
+  let analysis;
   try {
-    await verifyGzip(stream, u);
+    analysis = (await verifyGzip(stream, u)).analysis;
   } catch (e) {
     if (e instanceof ApiError && e.status === 422) e.details = { generation };
     throw e;
@@ -204,7 +239,7 @@ export async function verifyObject(u: Doc) {
     clearTimeout(timer);
     stream.destroy();
   }
-  return { generation, uploadedAt: m.timeCreated! };
+  return { generation, uploadedAt: m.timeCreated!, analysis };
 }
 export async function removeObject(key: string, generation?: string) {
   try {

@@ -1,0 +1,263 @@
+[
+  {
+    "scenario": "successful_entry",
+    "events": [
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "49122549-c030-55f5-a3e3-57d605b0fb21",
+        "installationId": "synthetic-pilot",
+        "flowId": "4d1f86ae-10e6-5fea-8899-e3be31a56358",
+        "attemptId": "60d89b8e-606e-5c60-98e7-1a78c880830a",
+        "occurredAt": "2026-10-01T12:00:00.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "lti.principal",
+        "source": "server",
+        "outcome": "succeeded",
+        "severity": "INFO"
+      },
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "ca34c420-99fc-5365-8871-728190ed3de0",
+        "installationId": "synthetic-pilot",
+        "flowId": "4d1f86ae-10e6-5fea-8899-e3be31a56358",
+        "attemptId": "60d89b8e-606e-5c60-98e7-1a78c880830a",
+        "occurredAt": "2026-10-01T12:00:01.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "configuration.delivered",
+        "source": "server",
+        "outcome": "succeeded",
+        "severity": "INFO"
+      },
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "8ced16d3-ca7b-5a77-a0ef-db119c3d65b2",
+        "installationId": "synthetic-pilot",
+        "flowId": "4d1f86ae-10e6-5fea-8899-e3be31a56358",
+        "attemptId": "60d89b8e-606e-5c60-98e7-1a78c880830a",
+        "occurredAt": "2026-10-01T12:00:02.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "access_code.released",
+        "source": "server",
+        "outcome": "succeeded",
+        "severity": "INFO"
+      }
+    ]
+  },
+  {
+    "scenario": "request_integrity_failure",
+    "events": [
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "a1687e76-b89f-580c-8eb5-ddc44f606c6c",
+        "installationId": "synthetic-pilot",
+        "flowId": "05d279bb-c6b2-5253-a7d4-7d61467a5aab",
+        "attemptId": "9528f4ab-a776-59af-8766-f79a60b04557",
+        "occurredAt": "2026-10-01T12:00:00.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "request.integrity",
+        "source": "server",
+        "outcome": "failed",
+        "severity": "ERROR",
+        "reasonCode": "REQUEST_INTEGRITY_SESSION_MISSING"
+      }
+    ]
+  },
+  {
+    "scenario": "state_decryption_failure",
+    "events": [
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "60ca91e3-7baa-5ef5-b997-80a09d279d2c",
+        "installationId": "synthetic-pilot",
+        "flowId": "bbeec8e3-fe60-57eb-a83f-6c8d189d32ee",
+        "attemptId": "80c0a396-56e5-50cd-a963-2b9fd53b7002",
+        "occurredAt": "2026-10-01T12:00:00.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "lti.state",
+        "source": "server",
+        "outcome": "failed",
+        "severity": "ERROR",
+        "reasonCode": "LTI_STATE_DECRYPT_FAILED"
+      }
+    ]
+  },
+  {
+    "scenario": "stored_token_decryption_failure",
+    "events": [
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "93edcdc2-c840-5fda-9e9f-9b5cb6116817",
+        "installationId": "synthetic-pilot",
+        "flowId": "9c80ed47-73ef-5dd8-a2e3-891b5a6518a2",
+        "attemptId": "dcc11ccc-da43-5dab-9ca1-7b663e7bb75b",
+        "occurredAt": "2026-10-01T12:00:00.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "oauth.token_read",
+        "source": "server",
+        "outcome": "failed",
+        "severity": "ERROR",
+        "reasonCode": "OAUTH_TOKEN_DECRYPT_FAILED"
+      }
+    ]
+  },
+  {
+    "scenario": "stale_grant",
+    "events": [
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "2b34c4b7-8894-5bcb-9d4b-c12918c0f75d",
+        "installationId": "synthetic-pilot",
+        "flowId": "4a6e8b17-c591-5861-9c99-283e8a400f79",
+        "attemptId": "6d72d439-3625-5b3a-8ee2-2d6fa7272f71",
+        "occurredAt": "2026-10-01T12:00:00.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "oauth.refresh",
+        "source": "server",
+        "outcome": "failed",
+        "severity": "ERROR",
+        "reasonCode": "CANVAS_REFRESH_REJECTED"
+      }
+    ]
+  },
+  {
+    "scenario": "native_decryption_failure",
+    "events": [
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "1eee2c5d-9595-518c-b30c-72d953ca5822",
+        "installationId": "synthetic-pilot",
+        "flowId": "40991844-43ed-54d2-85fe-fd4f4286ea5c",
+        "attemptId": "34ecc649-0269-5269-91b2-013f9e15ae59",
+        "occurredAt": "2026-10-01T12:00:00.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "configuration.delivered",
+        "source": "server",
+        "outcome": "succeeded",
+        "severity": "INFO"
+      },
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "9c504736-c061-56a2-9cd1-f05b62886cd4",
+        "installationId": "synthetic-pilot",
+        "flowId": "40991844-43ed-54d2-85fe-fd4f4286ea5c",
+        "attemptId": "34ecc649-0269-5269-91b2-013f9e15ae59",
+        "occurredAt": "2026-10-01T12:00:01.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "configuration.decryption",
+        "source": "seb_log",
+        "outcome": "failed",
+        "severity": "ERROR",
+        "reasonCode": "SEB_DECRYPTION_REJECTED"
+      }
+    ]
+  },
+  {
+    "scenario": "retry_recovery",
+    "events": [
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "e4498b96-d6dc-5ec0-ab76-2adb29653aa0",
+        "installationId": "synthetic-pilot",
+        "flowId": "4be137de-33ff-5390-ac28-639bd5afd612",
+        "attemptId": "2c9d1226-dcef-5d20-8347-378e2442afd3",
+        "occurredAt": "2026-10-01T12:00:00.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "proof.validation",
+        "source": "server",
+        "outcome": "failed",
+        "severity": "ERROR",
+        "reasonCode": "SEB_CONFIG_PROOF_MISMATCH"
+      },
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "5c495a5d-c29f-509d-9b00-809c76a64264",
+        "installationId": "synthetic-pilot",
+        "flowId": "4be137de-33ff-5390-ac28-639bd5afd612",
+        "attemptId": "2c9d1226-dcef-5d20-8347-378e2442afd3",
+        "occurredAt": "2026-10-01T12:00:01.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "access_code.released",
+        "source": "server",
+        "outcome": "succeeded",
+        "severity": "INFO"
+      }
+    ]
+  },
+  {
+    "scenario": "submission_exit",
+    "events": [
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "11d354af-db0f-5b11-98a8-018733e839e1",
+        "installationId": "synthetic-pilot",
+        "flowId": "bfba7040-ee2e-5c17-937e-5a9225a6a28c",
+        "attemptId": "c017f4c1-7dd3-5f44-bfa7-2c2010ebd7ae",
+        "occurredAt": "2026-10-01T12:00:00.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "browser.submit_observed",
+        "source": "browser",
+        "outcome": "observed",
+        "severity": "INFO"
+      },
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "613d86e6-eb9d-516a-a0c5-aa99f2faee03",
+        "installationId": "synthetic-pilot",
+        "flowId": "bfba7040-ee2e-5c17-937e-5a9225a6a28c",
+        "attemptId": "c017f4c1-7dd3-5f44-bfa7-2c2010ebd7ae",
+        "occurredAt": "2026-10-01T12:00:01.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "exit.page_observed",
+        "source": "server",
+        "outcome": "observed",
+        "severity": "INFO"
+      }
+    ]
+  },
+  {
+    "scenario": "missing_observations",
+    "events": [
+      {
+        "schema": "soe.diagnostics",
+        "schemaVersion": 1,
+        "eventId": "81ae7b45-2b77-588c-b015-7d2600edf639",
+        "installationId": "synthetic-pilot",
+        "flowId": "88c7f6ae-aa61-5870-a5dc-11b062961382",
+        "attemptId": "94fc4dc0-d623-547c-9326-5cbbc9128820",
+        "occurredAt": "2026-10-01T12:00:00.000Z",
+        "courseId": "42",
+        "contentId": "classicquiz_9",
+        "stage": "configuration.delivered",
+        "source": "server",
+        "outcome": "succeeded",
+        "severity": "INFO"
+      }
+    ]
+  }
+]

@@ -1,3 +1,4 @@
+import { integrationRoute } from "./integration";
 import { Management } from "./management";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -79,6 +80,8 @@ export async function route(req: Request) {
       return json({ status: "ok", schemaVersion: 1 });
     }
     if (group === "auth") return await oauth(req, version);
+    if (group === "integration" && version === "v2")
+      return await integrationRoute(req, store());
     const db = store(),
       s = new Service(db),
       management = new Management(db, s);

@@ -15,7 +15,8 @@ export function safeReturnTo(value: unknown) {
     typeof value !== "string" ||
     value.length > 2048 ||
     /[\x00-\x1f\x7f]/.test(value) ||
-    !/^\/(fleet|logs|enrollment|requests|audit|admins)(\?|$)/.test(value)
+    (!/^\/(fleet|logs|enrollment|requests|audit|admins)(\?|$)/.test(value) &&
+      !/^\/api\/integration\/v2\/auth\/authorize\?/.test(value))
   )
     return "/fleet";
   return value;
