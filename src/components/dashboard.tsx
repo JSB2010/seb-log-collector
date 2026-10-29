@@ -2,6 +2,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./icon";
 import { BrandMark } from "./brand";
+import {
+  displayTime,
+  denverDate,
+  shiftDate,
+  denverDayRange,
+  DISPLAY_TIME_ZONE,
+} from "../../contracts/display-time";
 import { csvCell } from "./csv";
 import { views, viewFromPath, type View } from "./navigation";
 import { humanize, collectionSummary, enrollmentState } from "./activity";
@@ -14,21 +21,25 @@ const resource: Record<string, string> = {
   audit: "auditEvents",
   admins: "admins",
 };
-const date = (d?: string) => (d ? new Date(d).toLocaleString() : "—");
+const date = (d?: string) => displayTime(d, true, "—");
 function CompactTime({ value }: { value?: string }) {
   if (!value) return <>—</>;
   const timestamp = new Date(value);
   return (
     <time className="compact-time" dateTime={value} title={date(value)}>
       <span>
-        {timestamp.toLocaleDateString(undefined, {
+        {timestamp.toLocaleDateString("en-US", {
+          timeZone: DISPLAY_TIME_ZONE,
           month: "short",
           day: "numeric",
           year: "numeric",
         })}
       </span>{" "}
       <span>
-        {timestamp.toLocaleTimeString(undefined, {
+        {timestamp.toLocaleTimeString("en-US", {
+          timeZone: DISPLAY_TIME_ZONE,
+          second: "2-digit",
+          timeZoneName: "short",
           hour: "numeric",
           minute: "2-digit",
         })}
@@ -71,8 +82,7 @@ const groupActions = [
     destructive: true,
   },
 ];
-const day = (n: number) =>
-  new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const day = (n: number) => shiftDate(denverDate(), n);
 function health(d: Row) {
   if (d.state === "revoked") return "Revoked";
   if (d.state === "paused") return "Paused";
@@ -215,8 +225,9 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
         if (seb) p.set("seb", seb);
         if (view === "logs") {
           p.set("sort", sort);
-          p.set("from", new Date(from + "T00:00:00Z").toISOString());
-          p.set("to", new Date(to + "T23:59:59Z").toISOString());
+          const range = denverDayRange(from, to);
+          p.set("from", range.from);
+          p.set("to", range.to);
         }
         if (next) p.set("cursor", next);
         const target =
@@ -580,6 +591,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
         <header>
           <div>
             <h1>{views.find(([v]) => v === view)?.[1]}</h1>
+            <p>Times: America/Denver (MST/MDT).</p>
             {view === "requests" && <p>Runs at the next device check-in.</p>}
           </div>
           {view === "fleet" || view === "enrollment" ? (
@@ -1222,6 +1234,7 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                   "id",
                   "serial",
                   "deviceName",
+                  "logStartedAtDenver",
                   "logStartedAt",
                   "logDateBasis",
                   "sourceUser",
@@ -1236,7 +1249,15 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                   [
                     cols.join(","),
                     ...rows.map((r) =>
-                      cols.map((k) => csvCell(r[k])).join(","),
+                      cols
+                        .map((k) =>
+                          csvCell(
+                            k === "logStartedAtDenver"
+                              ? date(r.logStartedAt || r.source?.mtime)
+                              : r[k],
+                          ),
+                        )
+                        .join(","),
                     ),
                   ].join("\n"),
                   "text/csv",
@@ -1578,6 +1599,10 @@ export function Dashboard({ initialView = "fleet" }: { initialView?: View }) {
                 {date(detail.log.logStartedAt || detail.log.source.mtime)}
               </h2>
               <p className="log-filename">{detail.log.source.basename}</p>
+              <p className="muted">
+                Original filename timestamps are UTC. Log text retains the
+                device-recorded time; the session time above is America/Denver.
+              </p>
               <p>{detail.log.source.username}</p>
               <dl>
                 {[

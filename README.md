@@ -77,3 +77,29 @@ uses command-scoped credentials, updates only the two date-index fields, and
 stops on a concurrent record change. It never changes the uploaded files,
 retention deadlines, or device policies. Run the preview again after any
 partial failure before applying the remaining corrections.
+
+### Display timezone
+
+The administrator console uses **America/Denver (MST/MDT)** for session start,
+received, expiry, audit, and device times, regardless of browser/server timezone.
+Date filters cover whole Denver calendar days, including 23/25-hour DST days.
+The CSV export includes `logStartedAtDenver` beside the original UTC fields.
+
+Original SEB filenames and stored/API timestamps remain UTC. Native file text
+retains the device-recorded time; an offset-free line is not automatically a
+Denver timestamp. Session generation time is distinct from file modification or
+upload time. No native collector update or original-file rewrite is required.
+The display/input helper and DST fixtures in `contracts/display-time.ts` and
+`tests/display-time.test.ts` match the diagnostics repository.
+
+On 2026-10-28, a retained-file audit found 558 legacy session indexes offset by
+six/seven hours. The concurrency-guarded `deployment/reindex-log-dates.mjs` preview
+and apply corrected only derived `logStartedAt` / `logDateBasis` fields. All 587
+retained files then matched their UTC filenames and the diagnostics index. Original
+files, upload/expiry times, identities and associations were unchanged. Use the
+tool's explicit `--account` and `--project` flags; omit `--apply` for a preview.
+The web patch deployed as `soe-diagnostics-denver-1029041503`, preserving existing
+runtime settings and the native installer. Collector tests (61), production
+build/typecheck, dependency audit and isolated desktop/mobile time/filter checks
+passed. See the diagnostics repository's `docs/denver-time-rollout.md` for rollout
+and cross-source verification evidence.

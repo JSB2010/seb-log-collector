@@ -569,6 +569,19 @@ export async function route(req: Request) {
           errorType: (e as Error).name,
         }),
       );
+    if (new URL(req.url).pathname === "/api/auth/callback") {
+      return new Response(
+        `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign-in could not be completed</title><style>body{font:16px/1.5 system-ui,sans-serif;margin:0;background:#f6fafd;color:#0b1e31}main{max-width:440px;margin:15vh auto;padding:24px}h1{font-size:24px}a{display:inline-block;background:#006d7a;color:white;padding:10px 16px;border-radius:6px;text-decoration:none}small{display:block;margin-top:24px;color:#445160;overflow-wrap:anywhere}</style><main><h1>Sign-in could not be completed</h1><p>The sign-in request may have expired. Start a fresh sign-in, then reopen your diagnostics workspace.</p><a href="/">Return to Safe Online Exam Logs</a><small>Request ${rid}</small></main></html>`,
+        {
+          status,
+          headers: {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store",
+            "referrer-policy": "no-referrer",
+          },
+        },
+      );
+    }
     return json(
       {
         error: {

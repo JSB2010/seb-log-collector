@@ -26,84 +26,173 @@ export function redactDiagnosticText(input: string): string {
       "$1[redacted]"
     );
 }
+export const PARSER_VERSION = 2;
 export interface LogFinding {
   stage: string;
   reasonCode: string;
   line: number;
   source: "seb_log";
   message: string;
+  category?: string;
+  severity?: "info" | "warning" | "error";
+  endLine?: number;
+  occurrences?: number;
+  lines?: number[];
+  observedAt?: string;
+  rawTimestamp?: string;
+  timestampBasis?: "explicit_offset" | "client_log_uncertain";
 }
 export interface LogAnalysis {
   parserVersion: number;
   markers: string[];
   findings: LogFinding[];
   lineCount: number;
-  timestampBasis: "client_log_uncertain";
+  timestampBasis: "client_log_uncertain" | "explicit_offset" | "mixed";
 }
-export function analyzeLog(text: string): LogAnalysis {
-  const markers = new Set<string>();
-  const findings: LogFinding[] = [];
-  const lines = text.split(/\r?\n/);
-  const patterns: [RegExp, string, string, string][] = [
-    [
-      /unable to decrypt|decryption (?:failed|error)|no (?:matching|valid).*identity|private (?:key|identity).*not found/i,
-      "configuration.decryption",
-      "SEB_DECRYPTION_REJECTED",
-      "Client reported configuration decryption failure"
-    ],
-    [
-      /didFinishLaunchingWithSettings|INITIALIZING SEB.*STARTING SESSION/i,
-      "client.startup",
-      "SEB_STARTUP_OBSERVED",
-      "Client startup observed"
-    ],
-    [
-      /Open MainBrowserWindow|main browser window.*(?:opened|created)/i,
-      "client.window",
-      "SEB_WINDOW_OBSERVED",
-      "Client browser window creation reported"
-    ],
-    [
-      /navigation.*(?:failed|error)|didFailProvisionalNavigation/i,
-      "client.navigation",
-      "SEB_NAVIGATION_FAILED",
-      "Client reported navigation failure"
-    ],
-    [
-      /(?:URL|url).*filter.*(?:blocked|denied)|not allowed.*URL/i,
-      "client.navigation",
-      "SEB_URL_FILTER_REJECTED",
-      "Client reported URL filter rejection"
-    ],
-    [
-      /csrf|invalid authenticity token/i,
-      "canvas.request",
-      "CANVAS_CSRF_REPORTED",
-      "Client log reports a Canvas request-integrity error"
-    ],
-    [
-      /terminating SEB|SEB.*(?:crash|fatal exception)/i,
-      "client.termination",
-      "SEB_TERMINATION_REPORTED",
-      "Client termination reported"
-    ]
-  ];
-  for (let i = 0; i < lines.length; i++) {
-    for (const m of lines[i].matchAll(
+type Rule = [RegExp, string, string, string, "info" | "warning" | "error"];
+const rules: Rule[] = [
+  [
+    /unable to decrypt|decryption (?:failed|error)|no (?:matching|valid).*identity|private (?:key|identity).*not found/i,
+    "configuration.decryption",
+    "SEB_DECRYPTION_REJECTED",
+    "Client reported configuration decryption failure",
+    "error"
+  ],
+  [
+    /didFinishLaunchingWithSettings|INITIALIZING SEB.*STARTING SESSION/i,
+    "client.startup",
+    "SEB_STARTUP_OBSERVED",
+    "Client startup observed",
+    "info"
+  ],
+  [
+    /Open MainBrowserWindow|main browser window.*(?:opened|created)/i,
+    "client.window",
+    "SEB_WINDOW_OBSERVED",
+    "Client browser window creation reported",
+    "info"
+  ],
+  [
+    /navigation.*(?:failed|error)|didFailProvisionalNavigation/i,
+    "client.navigation",
+    "SEB_NAVIGATION_FAILED",
+    "Client reported navigation failure",
+    "error"
+  ],
+  [
+    /(?:URL|url).*filter.*(?:blocked|denied)|not allowed.*URL/i,
+    "client.navigation",
+    "SEB_URL_FILTER_REJECTED",
+    "Client reported URL filter rejection",
+    "warning"
+  ],
+  [
+    /csrf|invalid authenticity token/i,
+    "canvas.request",
+    "CANVAS_CSRF_REPORTED",
+    "Client log reports a Canvas request-integrity error",
+    "error"
+  ],
+  [
+    /certificate.*(?:invalid|expired|untrusted)|SSL.*(?:error|failed)|TLS.*(?:error|failed)|NSURLErrorServerCertificate/i,
+    "client.network",
+    "SEB_TLS_ERROR_REPORTED",
+    "Client reported a certificate or TLS error",
+    "error"
+  ],
+  [
+    /network.*(?:unreachable|connection lost)|NSURLErrorTimedOut|connection.*(?:timed out|refused)|NSURLErrorNotConnectedToInternet/i,
+    "client.network",
+    "SEB_NETWORK_ERROR_REPORTED",
+    "Client reported a network connection error",
+    "error"
+  ],
+  [
+    /authentication.*(?:failed|rejected)|HTTP(?: status)?[ :=]+(?:401|403)\b/i,
+    "client.authentication",
+    "SEB_AUTH_ERROR_REPORTED",
+    "Client reported an authentication or access rejection",
+    "warning"
+  ],
+  [
+    /AAC.*(?:failed|denied)|assessment.*mode.*(?:failed|denied)/i,
+    "client.lockdown",
+    "SEB_LOCKDOWN_ERROR_REPORTED",
+    "Client reported assessment-mode failure",
+    "error"
+  ],
+  [
+    /SEB.*(?:crash|fatal exception)|uncaught exception|EXC_BAD_ACCESS/i,
+    "client.termination",
+    "SEB_FATAL_ERROR_REPORTED",
+    "Client reported a fatal error; cause is unconfirmed",
+    "error"
+  ],
+  [
+    /terminating SEB|SEB.*(?:normal shutdown|terminated normally|session ended|quit requested)/i,
+    "client.termination",
+    "SEB_TERMINATION_REPORTED",
+    "Client termination observed; this does not establish a crash",
+    "info"
+  ]
+];
+/** Streaming, bounded deterministic observations. No raw text enters findings. */
+export class LogAnalyzer {
+  private markers = new Set<string>();
+  private findings = new Map<string, LogFinding>();
+  private lineCount = 0;
+  consume(line: string, number = this.lineCount + 1) {
+    this.lineCount = number;
+    for (const m of line.matchAll(
       /(?:[?&]diagnostic=|diagnostic[-_ ](?:launch[-_ ])?marker[ :=]+|_diagnostic_)([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/gi
     ))
-      if (markers.size < 32) markers.add(m[1].toLowerCase());
-    for (const [pattern, stage, reasonCode, message] of patterns)
-      if (findings.length < 200 && pattern.test(lines[i]))
-        findings.push({ stage, reasonCode, line: i + 1, source: "seb_log", message });
+      if (this.markers.size < 32) this.markers.add(m[1].toLowerCase());
+    const rawTimestamp = /(?:^|\[)(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?)/.exec(
+      line
+    )?.[1];
+    const explicit = rawTimestamp && /(?:Z|[+-]\d{2}:?\d{2})$/.test(rawTimestamp);
+    const at = explicit ? Date.parse(rawTimestamp.replace(",", ".").replace(" ", "T")) : NaN;
+    for (const [pattern, stage, reasonCode, message, severity] of rules) {
+      if (!pattern.test(line)) continue;
+      const existing = this.findings.get(reasonCode);
+      if (existing) {
+        existing.occurrences = (existing.occurrences || 1) + 1;
+        existing.endLine = number;
+        if (existing.lines!.length < 32) existing.lines!.push(number);
+      } else if (this.findings.size < 200)
+        this.findings.set(reasonCode, {
+          stage,
+          reasonCode,
+          message,
+          severity,
+          category: stage.split(".")[0],
+          line: number,
+          endLine: number,
+          source: "seb_log",
+          occurrences: 1,
+          lines: [number],
+          rawTimestamp,
+          timestampBasis: Number.isFinite(at) ? "explicit_offset" : "client_log_uncertain",
+          observedAt: Number.isFinite(at) ? new Date(at).toISOString() : undefined
+        });
+    }
   }
-  return {
-    parserVersion: 1,
-    markers: [...markers],
-    findings,
-    lineCount: lines.length,
-    timestampBasis: "client_log_uncertain"
-  };
+  result(): LogAnalysis {
+    const findings = [...this.findings.values()];
+    const certain = findings.filter((f) => f.observedAt).length;
+    return {
+      parserVersion: PARSER_VERSION,
+      markers: [...this.markers],
+      findings,
+      lineCount: this.lineCount,
+      timestampBasis: !certain ? "client_log_uncertain" : certain === findings.length ? "explicit_offset" : "mixed"
+    };
+  }
+}
+export function analyzeLog(text: string): LogAnalysis {
+  const parser = new LogAnalyzer();
+  text.split(/\r?\n/).forEach((line) => parser.consume(line));
+  return parser.result();
 }
 
 /** Per-file state prevents multiline plist/PEM credentials leaking in previews. */

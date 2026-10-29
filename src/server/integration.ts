@@ -10,7 +10,11 @@ import { ApiError, requireThat } from "./errors";
 import { Service, audit, alive, expiry, now } from "./service";
 import type { Store, Doc } from "./store";
 import { object, verifyGzip, logText, download } from "./storage";
-import { analyzeLog, redactDiagnosticText } from "../../contracts/redaction";
+import {
+  LogAnalyzer,
+  PARSER_VERSION,
+  redactDiagnosticText,
+} from "../../contracts/redaction";
 
 const clientsSchema = z.record(
   z.string().regex(/^[a-z0-9_-]{1,80}$/),
@@ -188,22 +192,25 @@ export async function inspectLog(
       number = 0,
       total = 0;
     const lines: { number: number; text: string }[] = [];
-    const captured: string[] = [];
-    let capped = false;
+    const parser = new LogAnalyzer();
+    let capped = false,
+      moreMatches = false,
+      discardingLine = false;
     const offset = options.offset || 0,
       limit = options.limit || 500;
     const redactor = new DiagnosticTextRedactor();
     const processLine = (line: string) => {
       number++;
+      if (line.length > 65536 || (line.length > 8192 && !options.analyze))
+        capped = true;
       const safe = redactor.line(line.slice(0, 65536));
       if (options.analyze) {
-        if (total < 8 * 1024 * 1024) captured.push(line.slice(0, 65536));
-        else capped = true;
+        parser.consume(line.slice(0, 65536), number);
       } else if (options.search) {
         if (safe.toLowerCase().includes(options.search.toLowerCase())) {
-          if (lines.length < 100)
+          if (number > offset && lines.length < 100)
             lines.push({ number, text: safe.slice(0, 8192) });
-          else capped = true;
+          else if (number > offset) moreMatches = true;
         }
       } else if (number > offset && lines.length < limit)
         lines.push({ number, text: safe.slice(0, 8192) });
@@ -218,23 +225,27 @@ export async function inspectLog(
         pending += decoder.decode(r.value, { stream: true });
         let newline;
         while ((newline = pending.indexOf("\n")) >= 0) {
-          processLine(pending.slice(0, newline).replace(/\r$/, ""));
+          if (!discardingLine)
+            processLine(pending.slice(0, newline).replace(/\r$/, ""));
+          discardingLine = false;
           pending = pending.slice(newline + 1);
         }
         if (pending.length > 65536) {
-          processLine(pending.slice(0, 65536) + " [line truncated]");
+          if (!discardingLine)
+            processLine(pending.slice(0, 65536) + " [line truncated]");
+          discardingLine = true;
           pending = "";
           capped = true;
         }
       }
       pending += decoder.decode();
-      if (pending) processLine(pending);
+      if (pending && !discardingLine) processLine(pending);
     } finally {
       await stream.cancel().catch(() => {});
     }
     return options.analyze
       ? {
-          ...analyzeLog(captured.join("\n")),
+          ...parser.result(),
           partial: capped,
           lineCount: number,
         }
@@ -245,7 +256,11 @@ export async function inspectLog(
             !options.search && offset + lines.length < number
               ? offset + lines.length
               : null,
-          truncated: capped,
+          nextMatchOffset:
+            options.search && moreMatches && lines.length
+              ? lines.at(-1)!.number
+              : null,
+          truncated: capped || moreMatches,
         };
   } finally {
     readers--;
@@ -405,7 +420,7 @@ export async function integrationRoute(req: Request, db: Store) {
     let indexed = 0;
     for (const l of rows.filter(alive)) {
       if (
-        l.analysis?.parserVersion === 1 &&
+        l.analysis?.parserVersion === PARSER_VERSION &&
         l.analysis?.parsingStatus !== "failed"
       )
         continue;
@@ -503,10 +518,13 @@ export async function integrationRoute(req: Request, db: Store) {
     }
     if (action === "search" && req.method === "POST") {
       const b = z
-        .object({ query: z.string().min(1).max(128) })
+        .object({
+          query: z.string().min(1).max(128),
+          offset: z.number().int().min(0).max(10000000).optional(),
+        })
         .strict()
         .parse(await readBody(req));
-      return json(await inspectLog(l, { search: b.query }));
+      return json(await inspectLog(l, { search: b.query, offset: b.offset }));
     }
   }
   if (resource === "devices" && !id && req.method === "GET") {

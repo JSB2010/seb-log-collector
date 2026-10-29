@@ -17,7 +17,7 @@ vi.mock("google-auth-library", () => ({
     verifyIdToken = verify;
   },
 }));
-const raw = Buffer.from(
+let raw = Buffer.from(
   "Startup\nUnable to decrypt settings password=secret\nhttps://school.example/quiz?session_token=secret\n",
 );
 vi.mock("../src/server/storage", async (original) => ({
@@ -272,4 +272,45 @@ it("returns refreshed bounded parser metadata for incremental dashboard persiste
   expect(result.items[0].objectKey).toBeUndefined();
   expect(result.items[0].generation).toBeUndefined();
   expect(result.nextCursor).toBeNull();
+});
+
+it("paginates native search without replaying earlier matches and retains physical line numbers for long lines", async () => {
+  const previous = raw;
+  try {
+    raw = Buffer.from(
+      Array.from({ length: 125 }, (_, i) => "needle line " + i).join("\n"),
+    );
+    const log = {
+      id: "search-pages",
+      acceptedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+      objectKey: "private-object",
+      generation: "1",
+      rawBytes: raw.length,
+      gzipBytes: gzipSync(raw).length,
+      rawSha256: sha(raw),
+      gzipSha256: sha(gzipSync(raw)),
+    };
+    const first = await inspectLog(log, { search: "needle" });
+    expect(first.lines).toHaveLength(100);
+    expect(first.nextMatchOffset).toBe(100);
+    const second = await inspectLog(log, { search: "needle", offset: 100 });
+    expect(second.lines).toHaveLength(25);
+    expect(second.lines![0].number).toBe(101);
+    expect(second.truncated).toBe(false);
+    expect(second.nextMatchOffset).toBeNull();
+    raw = Buffer.from("x".repeat(70000) + "\nUnable to decrypt settings");
+    const long = {
+      ...log,
+      rawBytes: raw.length,
+      gzipBytes: gzipSync(raw).length,
+      rawSha256: sha(raw),
+      gzipSha256: sha(gzipSync(raw)),
+    };
+    const parsed = await inspectLog(long, { analyze: true });
+    expect("findings" in parsed && parsed.findings[0].line).toBe(2);
+    expect(parsed.lineCount).toBe(2);
+  } finally {
+    raw = previous;
+  }
 });

@@ -7,7 +7,7 @@ Object.assign(process.env, {
   SCHEDULER_AUDIENCE: "https://diagnostics.example.org",
   ALLOWED_DOMAINS: "example.org",
   SEED_ADMIN_EMAILS: "it@example.org",
-  SESSION_SECRET: "0123456789abcdef0123456789abcdef",
+  SESSION_SECRET: "0123456789abcdef0123456789abcdef", // gitleaks:allow -- synthetic test fixture
   DEV_AUTH: "false",
   DEV_MEMORY: "true",
   RETENTION_DAYS: "90",
